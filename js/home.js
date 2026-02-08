@@ -149,101 +149,38 @@ function createMovieCard(movie) {
    ============================================================ */
 
 function handleMovieClick(event, movieId) {
-  // A. Nếu là PC (> 768px): Vào thẳng trang chi tiết
+  // 1. PC: Chuyển trang luôn
   if (window.innerWidth > 768) {
     viewMovieDetail(movieId);
     return;
   }
 
-  // B. Nếu là Mobile: Dừng sự kiện click để không xung đột
-  event.stopPropagation();
+  // 2. MOBILE: Xử lý Popup tại chỗ
+  event.stopPropagation(); // Ngăn sự kiện lan ra ngoài
 
-  // Lấy thông tin phim
-  const movie = allMovies.find((m) => m.id === movieId);
-  if (!movie) return;
+  // Đóng tất cả popup khác đang mở trước
+  closeAllPopups();
 
-  // Mở bảng thông tin Mobile (Global Modal)
-  openMobilePreview(movie);
-}
+  // Tìm wrapper của phim vừa bấm
+  const wrapper = document.getElementById(`movie-wrapper-${movieId}`);
 
-function openMobilePreview(movie) {
-  // Xóa bảng cũ nếu có
-  const oldPopup = document.getElementById("mobile-preview-modal");
-  if (oldPopup) oldPopup.remove();
-
-  // Chuẩn bị dữ liệu Like
-  let isLiked = false;
-  if (
-    typeof currentUser !== "undefined" &&
-    currentUser &&
-    currentUser.favorites
-  ) {
-    isLiked = currentUser.favorites.includes(movie.id);
-  }
-  const likeIcon = isLiked ? "fas fa-heart" : "far fa-heart";
-  const likeColor = isLiked ? "#e50914" : "#fff";
-
-  // HTML cho Bảng thông tin Mobile (Nằm đè lên toàn màn hình)
-  const html = `
-        <div id="mobile-preview-modal" class="mobile-preview-overlay" onclick="closeMobilePreview()">
-            <div class="mobile-preview-box" onclick="event.stopPropagation()">
-                <button class="mobile-close-btn" onclick="closeMobilePreview()">
-                    <i class="fas fa-times"></i>
-                </button>
-
-                <div class="mobile-img-container">
-                    <img src="${movie.posterUrl}" onerror="this.src='https://placehold.co/300x450?text=No+Image'">
-                    <div class="mobile-play-btn" onclick="viewMovieDetail('${movie.id}'); closeMobilePreview()">
-                        <i class="fas fa-play"></i>
-                    </div>
-                </div>
-
-                <div class="mobile-info-body">
-                    <h3 class="mobile-title">${movie.title}</h3>
-                    <div class="mobile-meta">
-                        <span style="color:#46d369; font-weight:bold;">98% Phù hợp</span>
-                        <span style="border:1px solid #777; padding:0 4px; border-radius:2px">${movie.ageLimit || "T13"}</span>
-                        <span>${movie.year || "2026"}</span>
-                        <span style="border:1px solid #777; padding:0 4px; border-radius:2px">HD</span>
-                    </div>
-                    
-                    <div class="mobile-actions-row">
-                        <button class="btn-mobile-main" onclick="viewMovieDetail('${movie.id}'); closeMobilePreview()">
-                            <i class="fas fa-play"></i> Xem Ngay
-                        </button>
-                        
-                        <button class="btn-mobile-circle btn-like-${movie.id}" onclick="toggleFavorite('${movie.id}')" style="color: ${likeColor}; border-color: ${isLiked ? "#e50914" : "#555"}">
-                            <i class="${likeIcon}"></i>
-                        </button>
-                    </div>
-
-                    <div class="mobile-genres">
-                        ${movie.category} • ${movie.country}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-  document.body.insertAdjacentHTML("beforeend", html);
-
-  // Animation hiện lên
-  setTimeout(() => {
-    const modal = document.getElementById("mobile-preview-modal");
-    if (modal) modal.classList.add("active");
-  }, 10);
-}
-
-function closeMobilePreview() {
-  const modal = document.getElementById("mobile-preview-modal");
-  if (modal) {
-    modal.classList.remove("active");
-    setTimeout(() => modal.remove(), 300);
+  if (wrapper) {
+    // Bật class active-mobile để CSS hiển thị Popup "PC"
+    wrapper.classList.add("active-mobile");
   }
 }
-// Tự động đóng popup khi bấm ra ngoài vùng đen (trên Mobile)
+// Hàm đóng tất cả popup
+function closeAllPopups() {
+  document.querySelectorAll(".movie-card-wrapper").forEach((el) => {
+    el.classList.remove("active-mobile");
+  });
+}
+
+// Lắng nghe sự kiện chạm vào bất cứ đâu để đóng popup
 document.addEventListener("click", function (event) {
+  // Chỉ chạy trên mobile
   if (window.innerWidth <= 768) {
+    // Nếu cái được chạm KHÔNG PHẢI là Popup và KHÔNG PHẢI là Thẻ phim
     if (
       !event.target.closest(".movie-popup-nfx") &&
       !event.target.closest(".movie-card-static")
@@ -252,6 +189,7 @@ document.addEventListener("click", function (event) {
     }
   }
 });
+
 /**
  * Search movies
  */
