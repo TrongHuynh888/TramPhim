@@ -94,8 +94,9 @@ function createMovieCard(movie) {
   const matchScore = movie.rating ? Math.round(movie.rating * 10) : 95;
 
   return `
-    <div class="movie-card-wrapper" id="movie-wrapper-${movie.id}">
-        <div class="card movie-card-static" onclick="handleMovieClick(event, '${movie.id}')">
+    <div class="movie-card-wrapper" id="movie-wrapper-${movie.id}" onclick="handleMovieClick(event, '${movie.id}')">
+        
+        <div class="card movie-card-static">
             <div class="card-image">
                 <img src="${movie.posterUrl}" alt="${movie.title}" loading="lazy" onerror="this.src='${fallbackImage}';">
             </div>
@@ -143,51 +144,52 @@ function createMovieCard(movie) {
     </div>
   `;
 }
-
 /* ============================================================
    2. HÀM XỬ LÝ CLICK THÔNG MINH (Dán vào cuối file home.js)
    ============================================================ */
 
 function handleMovieClick(event, movieId) {
-  // 1. PC: Chuyển trang luôn
-  if (window.innerWidth > 768) {
-    viewMovieDetail(movieId);
-    return;
-  }
-
-  // 2. MOBILE: Xử lý Popup tại chỗ
-  event.stopPropagation(); // Ngăn sự kiện lan ra ngoài
-
-  // Đóng tất cả popup khác đang mở trước
-  closeAllPopups();
-
-  // Tìm wrapper của phim vừa bấm
-  const wrapper = document.getElementById(`movie-wrapper-${movieId}`);
-
-  if (wrapper) {
-    // Bật class active-mobile để CSS hiển thị Popup "PC"
-    wrapper.classList.add("active-mobile");
-  }
-}
-// Hàm đóng tất cả popup
-function closeAllPopups() {
-  document.querySelectorAll(".movie-card-wrapper").forEach((el) => {
-    el.classList.remove("active-mobile");
-  });
-}
-
-// Lắng nghe sự kiện chạm vào bất cứ đâu để đóng popup
-document.addEventListener("click", function (event) {
-  // Chỉ chạy trên mobile
-  if (window.innerWidth <= 768) {
-    // Nếu cái được chạm KHÔNG PHẢI là Popup và KHÔNG PHẢI là Thẻ phim
-    if (
-      !event.target.closest(".movie-popup-nfx") &&
-      !event.target.closest(".movie-card-static")
-    ) {
-      closeAllPopups();
+    // 1. PC: Chuyển trang luôn
+    if (window.innerWidth > 768) {
+        viewMovieDetail(movieId);
+        return;
     }
-  }
+
+    // 2. MOBILE:
+    // Nếu đang bấm vào bên trong popup (nút play, like) thì không làm gì (để nút đó tự xử lý)
+    if (event.target.closest('.movie-popup-nfx')) {
+        return;
+    }
+
+    // Đóng tất cả popup khác
+    closeAllPopups();
+
+    // Mở popup của phim này
+    const wrapper = document.getElementById(`movie-wrapper-${movieId}`);
+    if (wrapper) {
+        // Nếu nó đang mở rồi thì đóng lại (Toggle)
+        if (wrapper.classList.contains('active-mobile')) {
+            wrapper.classList.remove('active-mobile');
+        } else {
+            wrapper.classList.add('active-mobile');
+        }
+    }
+}
+
+function closeAllPopups() {
+    document.querySelectorAll('.movie-card-wrapper').forEach(el => {
+        el.classList.remove('active-mobile');
+    });
+}
+
+// Bấm ra ngoài khoảng trống thì đóng hết
+document.addEventListener('click', function(event) {
+    if (window.innerWidth <= 768) {
+        // Nếu không bấm vào bất kỳ card nào
+        if (!event.target.closest('.movie-card-wrapper')) {
+            closeAllPopups();
+        }
+    }
 });
 
 /**

@@ -1,5 +1,5 @@
 /* ============================================
-   RESPONSIVE.CSS - FINAL POLISH (SMALLER CARDS & PC-LIKE POPUP)
+   RESPONSIVE.CSS - 4 COLUMNS & FIXED POPUP
    ============================================ */
 
 /* 1. TABLET (iPad) */
@@ -116,18 +116,23 @@
     z-index: 5999 !important;
   }
 
-  /* --- C. LƯỚI PHIM NHỎ HƠN (3 CỘT) --- */
+  /* --- C. LƯỚI PHIM 4 CỘT --- */
   .movie-grid {
-    /* 👇 Chỉnh thành 3 cột để thẻ nhỏ lại */
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 8px !important; /* Khoảng cách nhỏ lại cho cân đối */
+    /* 👇 Chuyển thành 4 cột */
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important; /* Giảm khoảng cách cho vừa */
   }
 
-  /* Nếu màn hình quá bé (iPhone SE) thì về 2 cột */
-  @media (max-width: 375px) {
-    .movie-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-    }
+  /* Chỉnh lại font chữ trong thẻ phim cho vừa với 4 cột (rất bé) */
+  .card-body {
+    padding: 5px !important;
+  }
+  .card-title {
+    font-size: 11px !important;
+    margin-bottom: 2px !important;
+  }
+  .card-meta {
+    font-size: 9px !important;
   }
 
   .hero {
@@ -135,68 +140,64 @@
     padding: 100px 15px 40px !important;
   }
 
-  /* --- D. POPUP "PC-LIKE" TRÊN MOBILE --- */
+  /* --- D. POPUP HOẠT ĐỘNG TRÊN MOBILE --- */
 
-  /* Ẩn popup mặc định (tránh hover lung tung) */
+  /* 1. Mặc định ẩn Popup */
   .movie-card-wrapper .movie-popup-nfx {
-    display: none;
-    opacity: 0;
-    visibility: hidden;
-    transform: scale(0.9);
-    transition: all 0.2s ease;
+    display: none !important; /* Ẩn tiệt đi */
   }
 
-  /* Khi active (được chạm vào) -> Hiện Popup "xịn" */
+  /* 2. Khi có class active-mobile (được Click) */
+  /* QUAN TRỌNG: Đưa Wrapper lên lớp cao nhất để đè các thẻ khác */
+  .movie-card-wrapper.active-mobile {
+    z-index: 5000 !important;
+    position: relative; /* Để popup neo theo nó */
+  }
+
+  /* 3. Hiện Popup */
   .movie-card-wrapper.active-mobile .movie-popup-nfx {
     display: block !important;
-    opacity: 1;
-    visibility: visible;
+    visibility: visible !important;
+    opacity: 1 !important;
 
-    /* Định vị đè lên trên thẻ gốc nhưng to hơn chút */
+    /* Định vị Popup */
     position: absolute;
-    top: -10%;
-    left: -10%;
-    width: 120%; /* Rộng hơn thẻ gốc 20% */
+    top: -20px; /* Nhích lên trên thẻ gốc */
+    left: 50%;
+    transform: translateX(-50%); /* Căn giữa thẻ gốc */
+
+    /* Kích thước Popup (Phải to hơn thẻ gốc vì thẻ gốc giờ rất bé) */
+    width: 280px !important;
+    max-width: 90vw; /* Không được to quá màn hình */
     height: auto;
-    min-height: 120%;
-    z-index: 5000;
 
-    transform: scale(1);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+    z-index: 5001; /* Nằm trên wrapper */
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
     border: 1px solid var(--accent-primary);
+    animation: popInMobile 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
-  /* Tinh chỉnh nội dung bên trong popup mobile cho gọn */
-  .movie-card-wrapper.active-mobile .popup-header-img {
-    height: 100px;
+  @keyframes popInMobile {
+    from {
+      transform: translateX(-50%) scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(-50%) scale(1);
+      opacity: 1;
+    }
   }
-  .movie-card-wrapper.active-mobile .popup-body {
-    padding: 8px;
+
+  /* Tinh chỉnh nội dung Popup cho gọn */
+  .movie-card-wrapper.active-mobile .popup-header-img {
+    height: 140px;
   }
   .movie-card-wrapper.active-mobile .popup-title-new {
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 5px;
   }
-  .movie-card-wrapper.active-mobile .popup-actions {
-    gap: 5px;
-    margin-bottom: 8px;
-  }
-
   .movie-card-wrapper.active-mobile .btn-popup-play {
-    font-size: 11px;
-    padding: 6px 10px;
-  }
-  .movie-card-wrapper.active-mobile .btn-popup-icon {
-    width: 30px;
-    height: 30px;
     font-size: 12px;
-  }
-  .movie-card-wrapper.active-mobile .popup-meta-row {
-    font-size: 10px;
-    gap: 5px;
-    margin-bottom: 5px;
-  }
-  .movie-card-wrapper.active-mobile .popup-genres-row {
-    font-size: 10px;
+    padding: 8px;
   }
 }
