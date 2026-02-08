@@ -1,31 +1,14 @@
 /* ============================================
-   RESPONSIVE.CSS - FINAL (FIX MENU & POPUP MOBILE)
+   RESPONSIVE.CSS - FINAL VERSION (CLEAN)
    ============================================ */
 
-/* 1. TABLET (iPad) */
+/* 1. TABLET (iPad - Dọc) */
 @media (max-width: 1024px) {
   .nav-container,
   .section,
   .footer-content {
     padding-left: 20px !important;
     padding-right: 20px !important;
-  }
-  .admin-sidebar {
-    width: 80px;
-  }
-  .admin-sidebar:hover {
-    width: 260px;
-  }
-  .admin-content {
-    margin-left: 80px;
-  }
-  .footer-content {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 30px;
-  }
-  .stats-box {
-    grid-column: span 2;
-    margin-top: 10px;
   }
 }
 
@@ -37,30 +20,19 @@
     --font-xl: 18px;
   }
 
-  /* --- A. HEADER GỌN GÀNG (FIX LỖI ĐÈ) --- */
+  /* --- A. HEADER & MENU --- */
   .nav-container {
     padding: 10px 15px !important;
     gap: 10px;
-    justify-content: space-between;
-    align-items: center;
     height: 60px;
     position: relative;
     z-index: 2000;
   }
-
-  .nav-logo {
-    font-size: 16px !important;
-  }
-  .nav-logo i {
-    font-size: 20px !important;
-  }
   .nav-actions {
     gap: 8px !important;
-    display: flex;
-    align-items: center;
   }
 
-  /* Nút Ví & Avatar nhỏ lại */
+  /* Nút Ví & Avatar nhỏ */
   .wallet-btn,
   #connectWalletBtn {
     width: 32px;
@@ -75,6 +47,7 @@
   .wallet-btn i {
     font-size: 14px !important;
     margin: 0 !important;
+    display: block !important;
   }
   .wallet-btn span {
     display: none !important;
@@ -84,7 +57,7 @@
     height: 32px;
   }
 
-  /* NÚT 3 GẠCH (MENU) - Đặt relative để nằm đúng hàng */
+  /* Nút 3 gạch */
   .mobile-menu-toggle {
     display: flex !important;
     align-items: center;
@@ -95,27 +68,24 @@
     border: none;
     color: #fff;
     font-size: 20px;
-    position: relative; /* KHÔNG DÙNG FIXED NỮA */
     z-index: 2001;
   }
 
-  /* MENU TRƯỢT */
+  /* Menu trượt */
   .nav-menu {
-    display: flex !important;
-    flex-direction: column;
-    justify-content: flex-start;
-    padding-top: 20px;
     position: fixed;
     top: 60px;
     right: 0;
     width: 100%;
     height: calc(100vh - 60px);
     background: var(--bg-primary);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-direction: column;
+    padding-top: 20px;
     transform: translateX(100%);
     transition: transform 0.3s ease;
-    visibility: hidden;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 1999;
+    visibility: hidden;
   }
   .nav-menu.active {
     transform: translateX(0);
@@ -127,207 +97,53 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* --- B. LƯỚI PHIM --- */
+  /* --- B. FIX LỖI ADMIN SIDEBAR (ĐÃ BỔ SUNG) --- */
+  .admin-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: -100% !important; /* Mặc định ẩn sang trái */
+    width: 260px !important;
+    height: 100vh;
+    z-index: 6000;
+    transition: left 0.3s ease-in-out;
+    background: #1a1a2e;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  }
+  .admin-sidebar.active {
+    left: 0 !important;
+  } /* Khi active thì trượt ra */
+  .admin-content {
+    margin-left: 0 !important;
+    padding: 15px;
+  }
+
+  /* Overlay cho Admin Sidebar */
+  #adminSidebarOverlay {
+    z-index: 5999 !important; /* Nằm dưới menu nhưng trên nội dung */
+  }
+
+  /* --- C. FIX LỖI POPUP PHIM (MOBILE MODAL) --- */
+  /* Ẩn popup cũ */
+  .movie-card-wrapper:hover .movie-popup-nfx {
+    display: none !important;
+  }
+
+  /* Lưới phim 2 cột */
   .movie-grid {
-    grid-template-columns: repeat(2, 1fr) !important; /* 2 cột */
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px;
   }
   .hero {
     min-height: auto !important;
     padding: 100px 15px 40px !important;
   }
-  .modal {
-    width: 100% !important;
-    height: 100vh;
-    border-radius: 0;
-    margin: 0;
-    max-width: none;
-  }
 
-  /* --- C. XỬ LÝ POPUP TRÊN MOBILE (QUAN TRỌNG) --- */
-
-  /* Mặc định ẩn popup (để không bị hover lung tung) */
-  .movie-card-wrapper:hover .movie-popup-nfx {
-    display: none;
-  }
-
-  /* KHI ĐƯỢC KÍCH HOẠT BẰNG JS (Class .active-mobile) */
-  .movie-card-wrapper.active-mobile .movie-popup-nfx {
-    display: block !important;
-    opacity: 1;
-    visibility: visible;
-    position: fixed; /* Hiện giữa màn hình như Modal */
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) scale(1) !important;
-    width: 90% !important;
-    max-width: 350px;
-    height: auto !important;
-    max-height: 80vh;
-    overflow-y: auto;
-    z-index: 10000;
-    box-shadow: 0 0 0 100vh rgba(0, 0, 0, 0.8); /* Làm tối nền xung quanh */
-    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-
-  @keyframes popIn {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -40%) scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-  }
-}
-/* ============================================
-   MOBILE MOVIE PREVIEW (NETFLIX STYLE)
-   ============================================ */
-.mobile-preview-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 10000;
-  display: flex;
-  align-items: flex-end; /* Hiện từ dưới lên */
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-}
-.mobile-preview-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.mobile-preview-card {
-  width: 100%;
-  max-width: 500px;
-  background: #181818;
-  border-radius: 16px 16px 0 0; /* Bo tròn góc trên */
-  overflow: hidden;
-  position: relative;
-  transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.5);
-  padding-bottom: 20px;
-}
-.mobile-preview-overlay.active .mobile-preview-card {
-  transform: translateY(0);
-}
-
-.mobile-close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  z-index: 10;
-  font-size: 16px;
-}
-
-.mobile-preview-img {
-  width: 100%;
-  height: 200px;
-  position: relative;
-}
-.mobile-preview-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.mobile-preview-gradient {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, #181818 0%, transparent 100%);
-}
-
-.mobile-preview-body {
-  padding: 15px 20px;
-}
-.mobile-preview-title {
-  font-size: 20px;
-  font-weight: 800;
-  margin-bottom: 10px;
-  font-family: "Montserrat", sans-serif;
-}
-.mobile-preview-meta {
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  color: #bcbcbc;
-  margin-bottom: 10px;
-  align-items: center;
-}
-.mobile-preview-meta .match {
-  color: #46d369;
-  font-weight: 700;
-}
-.mobile-preview-meta .age {
-  border: 1px solid #bcbcbc;
-  padding: 0 4px;
-  border-radius: 2px;
-}
-
-.mobile-preview-desc {
-  font-size: 13px;
-  color: #fff;
-  margin-bottom: 20px;
-}
-
-.btn-mobile-play {
-  width: 100%;
-  background: #fff;
-  color: #000;
-  border: none;
-  padding: 12px;
-  border-radius: 4px;
-  font-weight: 700;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-.mobile-preview-actions .mobile-action-group {
-  display: flex;
-  gap: 40px;
-  justify-content: flex-start;
-}
-.btn-mobile-icon {
-  background: none;
-  border: none;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  color: #bcbcbc;
-}
-.btn-mobile-icon i {
-  font-size: 20px;
-  color: #fff;
-}
-/* --- CSS CHO BẢNG THÔNG TIN PHIM MOBILE (NEW) --- */
-@media (max-width: 768px) {
-  /* Ẩn popup cũ để tránh xung đột */
-  .movie-card-wrapper:hover .movie-popup-nfx {
-    display: none !important;
-  }
-
-  /* Bảng phim mới */
+  /* --- STYLE CHO BẢNG THÔNG TIN MỚI (Khắc phục lỗi vỡ giao diện) --- */
   .mobile-preview-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 9999;
+    background: rgba(0, 0, 0, 0.85); /* Nền tối hơn */
+    z-index: 10000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -335,6 +151,7 @@
     visibility: hidden;
     transition: 0.3s;
     padding: 20px;
+    backdrop-filter: blur(5px);
   }
   .mobile-preview-overlay.active {
     opacity: 1;
@@ -344,14 +161,16 @@
   .mobile-preview-box {
     background: #1f1f2e;
     width: 100%;
-    max-width: 320px;
-    border-radius: 12px;
+    max-width: 340px;
+    border-radius: 16px;
     overflow: hidden;
     position: relative;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 1px solid #333;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transform: scale(0.9);
     transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
   }
   .mobile-preview-overlay.active .mobile-preview-box {
     transform: scale(1);
@@ -360,6 +179,7 @@
   .mobile-img-container {
     position: relative;
     height: 180px;
+    width: 100%;
   }
   .mobile-img-container img {
     width: 100%;
@@ -371,50 +191,55 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 50px;
-    height: 50px;
-    background: rgba(0, 0, 0, 0.6);
+    width: 56px;
+    height: 56px;
+    background: rgba(229, 9, 20, 0.9); /* Màu đỏ Netflix */
     border-radius: 50%;
-    border: 2px solid #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 20px;
+    font-size: 24px;
+    box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
     cursor: pointer;
+    z-index: 2;
   }
 
   .mobile-info-body {
-    padding: 15px;
+    padding: 15px 20px 20px;
+    text-align: left;
+    background: #1f1f2e;
   }
   .mobile-title {
-    font-size: 18px;
+    font-size: 20px;
+    font-weight: 800;
     margin-bottom: 8px;
-    font-family: "Montserrat", sans-serif;
     color: #fff;
+    line-height: 1.3;
   }
   .mobile-meta {
     font-size: 12px;
-    color: #ccc;
-    margin-bottom: 15px;
+    color: #bbb;
+    margin-bottom: 20px;
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
   }
 
   .mobile-actions-row {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     margin-bottom: 15px;
   }
   .btn-mobile-main {
     flex: 1;
-    background: linear-gradient(to right, #e50914, #ff0055);
-    color: #fff;
+    background: #fff;
+    color: #000;
     border: none;
-    padding: 10px;
+    padding: 12px;
     border-radius: 4px;
-    font-weight: bold;
+    font-weight: 700;
+    font-size: 15px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -422,32 +247,37 @@
     gap: 8px;
   }
   .btn-mobile-circle {
-    width: 40px;
-    height: 40px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
-    border: 1px solid #555;
-    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    cursor: pointer;
+    font-size: 20px;
   }
+
   .mobile-close-btn {
     position: absolute;
     top: 10px;
     right: 10px;
     z-index: 10;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
     border: none;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .mobile-genres {
     font-size: 12px;
-    color: #888;
+    color: #777;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 10px;
   }
 }
