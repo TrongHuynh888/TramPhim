@@ -425,17 +425,29 @@ function toggleMobileMenu() {
 }
 
 // Hàm đóng menu khi click vào link bên trong (để không phải tắt tay)
+// Hàm đóng menu thông minh (Tự động nhận diện mọi nút bấm bên trong)
 document.addEventListener("DOMContentLoaded", () => {
-  const menuLinks = document.querySelectorAll(".nav-link");
   const menu = document.getElementById("navMenu");
   const btnIcon = document.querySelector("#mobileMenuToggle i");
 
-  menuLinks.forEach((link) => {
-    link.addEventListener("click", () => {
-      if (menu && menu.classList.contains("active")) {
+  if (menu) {
+    // Bắt sự kiện click vào chính cái Menu cha
+    menu.addEventListener("click", (e) => {
+      // Kiểm tra: Nếu cái được bấm là thẻ A, thẻ Button, hoặc có class nav-link
+      const targetLink =
+        e.target.closest("a") ||
+        e.target.closest("button") ||
+        e.target.closest(".nav-link");
+
+      if (targetLink) {
+        // Thì đóng menu ngay lập tức
         menu.classList.remove("active");
-        if (btnIcon) btnIcon.className = "fas fa-bars";
+
+        // Đổi icon X trở lại thành 3 gạch
+        if (btnIcon) {
+          btnIcon.className = "fas fa-bars";
+        }
       }
     });
-  });
+  }
 });
