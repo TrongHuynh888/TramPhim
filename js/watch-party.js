@@ -610,43 +610,70 @@ function initVoiceChat() {
 function startPeerConnection() {
   addMicButtonToUI(); // Hiện nút Mic
 
+  // 1. Đánh thức AudioContext (Quan trọng cho Mobile)
+  if (!globalAudioContext) {
+    globalAudioContext = new (
+      window.AudioContext || window.webkitAudioContext
+    )();
+  }
+  if (globalAudioContext.state === "suspended") {
+    globalAudioContext.resume();
+  }
+
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     console.warn("Trình duyệt không hỗ trợ Voice Chat");
     return;
   }
 
-  // 👇 FIX: Thêm echoCancellation để chống vang tiếng
+  // 2. CẤU HÌNH MIC CHỐNG VANG & NHIỄU (AGGRESSIVE)
+  const audioConstraints = {
+    echoCancellation: true, // Bắt buộc: Khử vang
+    noiseSuppression: true, // Bắt buộc: Khử ồn nền
+    autoGainControl: true, // Tự động cân bằng âm lượng
+    channelCount: 1, // Chế độ Mono (Dễ khử vang hơn Stereo)
+    sampleRate: 48000, // Chất lượng chuẩn
+    // Các thiết lập chuyên sâu cho Chrome
+    googEchoCancellation: true,
+    googAutoGainControl: true,
+    googNoiseSuppression: true,
+    googHighpassFilter: true,
+  };
+
   navigator.mediaDevices
     .getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
+      audio: audioConstraints,
       video: false,
     })
     .then((stream) => {
       myStream = stream;
 
-      // Mặc định vào phòng là TẮT MIC ngay lập tức
+      // Mặc định vào phòng là TẮT MIC ngay
       isMicEnabled = false;
       if (myStream.getAudioTracks().length > 0) {
         myStream.getAudioTracks()[0].enabled = false;
       }
+      updateMicUI(false);
 
-      updateMicUI(false); // Icon màu đỏ (Tắt)
-
-      // Khởi động bộ phân tích âm thanh (để Avatar nhấp nháy khi nói)
       monitorAudioLevel(stream, currentUser.uid);
 
-      // Tạo kết nối PeerJS
+      // 3. CẤU HÌNH MÁY CHỦ XUYÊN VPN (ICE SERVERS)
       myPeer = new Peer(currentUser.uid, {
         config: {
           iceServers: [
+            // Máy chủ của Google (Cổng mặc định)
             { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun3.l.google.com:19302" },
+            { urls: "stun:stun4.l.google.com:19302" },
+            // Máy chủ dự phòng khác (Giúp xuyên VPN tốt hơn)
+            { urls: "stun:stun.services.mozilla.com" },
             { urls: "stun:global.stun.twilio.com:3478" },
           ],
+          iceTransportPolicy: "all", // Cho phép mọi loại kết nối
+          iceCandidatePoolSize: 10, // Tăng bộ đệm kết nối
         },
+        debug: 1, // Giảm log để đỡ lag
       });
 
       myPeer.on("open", (id) => {
@@ -654,12 +681,10 @@ function startPeerConnection() {
         connectToAllPeers();
       });
 
-      // Khi có người gọi đến (Nghe tiếng người khác)
       myPeer.on("call", (call) => {
-        call.answer(myStream); // Trả lời bằng stream của mình
+        call.answer(myStream);
         const audio = document.createElement("audio");
         const callerId = call.peer;
-
         call.on("stream", (userAudioStream) => {
           addAudioStream(audio, userAudioStream, callerId);
         });
@@ -667,15 +692,19 @@ function startPeerConnection() {
 
       myPeer.on("error", (err) => {
         console.warn("Lỗi PeerJS:", err);
-        // Nếu lỗi trùng ID, thử kết nối lại
-        if (err.type === "unavailable-id") {
-          myPeer.reconnect();
+        // Nếu VPN chặn quá gắt, thử kết nối lại
+        if (
+          err.type === "disconnected" ||
+          err.type === "network" ||
+          err.type === "server-error"
+        ) {
+          setTimeout(() => myPeer.reconnect(), 3000);
         }
       });
     })
     .catch((err) => {
       console.error("Không lấy được quyền Mic:", err);
-      showNotification("Vui lòng CHO PHÉP quyền Micro để nói chuyện!", "error");
+      showNotification("Vui lòng CHO PHÉP quyền Micro!", "error");
     });
 }
 
