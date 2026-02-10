@@ -607,10 +607,34 @@ function initVoiceChat() {
   }
 }
 
-function startPeerConnection() {
-  addMicButtonToUI(); // Hiện nút Mic
+// --- HÀM MỚI: LẤY SERVER XUYÊN VPN TỪ METERED ---
+async function getTurnCredentials() {
+  const METERED_API_KEY = "XdPnoCY8k0fnWLdeECzCipMdUx8zgEbQHbdbjyKMPVgNNQYk"; // 👈 BẮT BUỘC: Dán API Key vào đây
+  const APP_NAME = "moviechain"; // Tên app trên Metered (theo ảnh bạn gửi)
 
-  // 1. Đánh thức AudioContext (Quan trọng cho Mobile)
+  try {
+    console.log("🔄 Đang lấy cấu hình TURN Server...");
+    const response = await fetch(
+      `https://${APP_NAME}.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`,
+    );
+    const iceServers = await response.json();
+    console.log("✅ Đã lấy được TURN Server xịn:", iceServers);
+    return iceServers;
+  } catch (error) {
+    console.error("⚠️ Lỗi lấy TURN Server (Dùng tạm STUN thường):", error);
+    // Fallback về máy chủ miễn phí nếu lỗi
+    return [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:global.stun.twilio.com:3478" },
+    ];
+  }
+}
+
+// --- HÀM KHỞI TẠO KẾT NỐI (ĐÃ NÂNG CẤP ASYNC) ---
+async function startPeerConnection() {
+  addMicButtonToUI();
+
+  // 1. Đánh thức Audio Context (Quan trọng cho Mobile)
   if (!globalAudioContext) {
     globalAudioContext = new (
       window.AudioContext || window.webkitAudioContext
@@ -625,29 +649,24 @@ function startPeerConnection() {
     return;
   }
 
-  // 2. CẤU HÌNH MIC CHỐNG VANG & NHIỄU (AGGRESSIVE)
+  // 2. LẤY DANH SÁCH MÁY CHỦ ICE (Chờ lấy xong mới kết nối)
+  const iceServers = await getTurnCredentials();
+
+  // 3. CẤU HÌNH MIC (CHỐNG VANG TỐI ĐA)
   const audioConstraints = {
-    echoCancellation: true, // Bắt buộc: Khử vang
-    noiseSuppression: true, // Bắt buộc: Khử ồn nền
-    autoGainControl: true, // Tự động cân bằng âm lượng
-    channelCount: 1, // Chế độ Mono (Dễ khử vang hơn Stereo)
-    sampleRate: 48000, // Chất lượng chuẩn
-    // Các thiết lập chuyên sâu cho Chrome
-    googEchoCancellation: true,
-    googAutoGainControl: true,
-    googNoiseSuppression: true,
-    googHighpassFilter: true,
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1, // Mono (Dễ khử vang hơn)
+    sampleRate: 48000,
   };
 
   navigator.mediaDevices
-    .getUserMedia({
-      audio: audioConstraints,
-      video: false,
-    })
+    .getUserMedia({ audio: audioConstraints, video: false })
     .then((stream) => {
       myStream = stream;
 
-      // Mặc định vào phòng là TẮT MIC ngay
+      // Mặc định tắt Mic khi mới vào
       isMicEnabled = false;
       if (myStream.getAudioTracks().length > 0) {
         myStream.getAudioTracks()[0].enabled = false;
@@ -656,28 +675,18 @@ function startPeerConnection() {
 
       monitorAudioLevel(stream, currentUser.uid);
 
-      // 3. CẤU HÌNH MÁY CHỦ XUYÊN VPN (ICE SERVERS)
+      // 4. TẠO PEER VỚI DANH SÁCH SERVER VỪA LẤY
       myPeer = new Peer(currentUser.uid, {
         config: {
-          iceServers: [
-            // Máy chủ của Google (Cổng mặc định)
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-            { urls: "stun:stun3.l.google.com:19302" },
-            { urls: "stun:stun4.l.google.com:19302" },
-            // Máy chủ dự phòng khác (Giúp xuyên VPN tốt hơn)
-            { urls: "stun:stun.services.mozilla.com" },
-            { urls: "stun:global.stun.twilio.com:3478" },
-          ],
-          iceTransportPolicy: "all", // Cho phép mọi loại kết nối
-          iceCandidatePoolSize: 10, // Tăng bộ đệm kết nối
+          iceServers: iceServers, // 👉 Nạp server xịn vào đây
+          iceTransportPolicy: "all",
+          iceCandidatePoolSize: 10,
         },
-        debug: 1, // Giảm log để đỡ lag
+        debug: 1,
       });
 
       myPeer.on("open", (id) => {
-        console.log("✅ Đã kết nối Voice Chat ID:", id);
+        console.log("✅ Đã kết nối Voice Chat (Xuyên VPN) ID:", id);
         connectToAllPeers();
       });
 
@@ -692,18 +701,19 @@ function startPeerConnection() {
 
       myPeer.on("error", (err) => {
         console.warn("Lỗi PeerJS:", err);
-        // Nếu VPN chặn quá gắt, thử kết nối lại
+        // Tự động kết nối lại nếu bị rớt mạng
         if (
           err.type === "disconnected" ||
           err.type === "network" ||
           err.type === "server-error"
         ) {
+          console.log("🔄 Đang thử kết nối lại...");
           setTimeout(() => myPeer.reconnect(), 3000);
         }
       });
     })
     .catch((err) => {
-      console.error("Không lấy được quyền Mic:", err);
+      console.error("Lỗi Mic:", err);
       showNotification("Vui lòng CHO PHÉP quyền Micro!", "error");
     });
 }
