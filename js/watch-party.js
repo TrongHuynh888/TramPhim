@@ -607,27 +607,38 @@ function initVoiceChat() {
 }
 
 function startPeerConnection() {
-  // 👇 FIX: Luôn hiện nút điều khiển (Loa/Mic) ngay từ đầu để người dùng thấy
-  addMicButtonToUI();
+  addMicButtonToUI(); // Hiện nút Mic
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.warn("Trình duyệt không hỗ trợ Voice Chat (getUserMedia missing)");
+    console.warn("Trình duyệt không hỗ trợ Voice Chat");
     return;
   }
+
+  // 👇 FIX: Thêm echoCancellation để chống vang tiếng
   navigator.mediaDevices
-    .getUserMedia({ audio: true, video: false })
+    .getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    })
     .then((stream) => {
       myStream = stream;
-      // SỬA ĐOẠN NÀY: Ép Mic tắt ngay khi vừa lấy quyền xong
+
+      // Mặc định vào phòng là TẮT MIC ngay lập tức
       isMicEnabled = false;
       if (myStream.getAudioTracks().length > 0) {
-        myStream.getAudioTracks()[0].enabled = false; // Tắt track âm thanh vật lý
+        myStream.getAudioTracks()[0].enabled = false;
       }
-      updateMicUI(false); // Cập nhật icon Mic thành màu đỏ
-      monitorAudioLevel(stream, currentUser.uid);
-      // 👆 Giúp avatar của chính bạn cũng sáng lên khi bạn nói
 
-      // 👇 FIX: Thêm cấu hình STUN Server để kết nối xuyên mạng (NAT)
+      updateMicUI(false); // Icon màu đỏ (Tắt)
+
+      // Khởi động bộ phân tích âm thanh (để Avatar nhấp nháy khi nói)
+      monitorAudioLevel(stream, currentUser.uid);
+
+      // Tạo kết nối PeerJS
       myPeer = new Peer(currentUser.uid, {
         config: {
           iceServers: [
@@ -638,37 +649,32 @@ function startPeerConnection() {
       });
 
       myPeer.on("open", (id) => {
+        console.log("✅ Đã kết nối Voice Chat ID:", id);
         connectToAllPeers();
       });
 
+      // Khi có người gọi đến (Nghe tiếng người khác)
       myPeer.on("call", (call) => {
-        call.answer(myStream);
+        call.answer(myStream); // Trả lời bằng stream của mình
         const audio = document.createElement("audio");
         const callerId = call.peer;
-        call.on("stream", (userAudioStream) =>
-          addAudioStream(audio, userAudioStream, callerId),
-        );
+
+        call.on("stream", (userAudioStream) => {
+          addAudioStream(audio, userAudioStream, callerId);
+        });
       });
 
-      // 👇 FIX: Bắt lỗi kết nối Peer
       myPeer.on("error", (err) => {
-        console.warn("PeerJS Error:", err);
+        console.warn("Lỗi PeerJS:", err);
+        // Nếu lỗi trùng ID, thử kết nối lại
+        if (err.type === "unavailable-id") {
+          myPeer.reconnect();
+        }
       });
     })
     .catch((err) => {
-      console.error("Mic Error:", err);
-      // 👇 FIX: Thêm thông báo lỗi cho người dùng khi không lấy được Mic
-      if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
-        showNotification(
-          "Bạn đã từ chối quyền Micro. Vui lòng kiểm tra cài đặt của trình duyệt.",
-          "error",
-        );
-      } else {
-        showNotification("Không thể truy cập Micro. Lỗi: " + err.name, "error");
-      }
+      console.error("Không lấy được quyền Mic:", err);
+      showNotification("Vui lòng CHO PHÉP quyền Micro để nói chuyện!", "error");
     });
 }
 
@@ -819,6 +825,13 @@ function addMicButtonToUI() {
 }
 
 function toggleMyMic() {
+  // 👇 FIX QUAN TRỌNG: Đánh thức bộ xử lý âm thanh ngay khi bấm nút
+  if (globalAudioContext && globalAudioContext.state === "suspended") {
+    globalAudioContext.resume().then(() => {
+      console.log("🔊 AudioContext đã được đánh thức!");
+    });
+  }
+
   db.collection("watchRooms")
     .doc(currentRoomId)
     .collection("members")
@@ -826,23 +839,36 @@ function toggleMyMic() {
     .get()
     .then((doc) => {
       const data = doc.data();
+      // Kiểm tra xem có bị Host cấm nói không
       if (doc.exists && data.isMicBanned) {
         showNotification("Host đã khóa Mic của bạn!", "error");
         return;
       }
 
-      // 👇 FIX: Kiểm tra nếu chưa có quyền Mic thì báo lỗi
+      // Kiểm tra xem đã lấy được quyền Mic chưa
       if (!myStream) {
         showNotification(
-          "Không tìm thấy Micro hoặc bạn chưa cấp quyền!",
+          "Chưa kết nối được Micro. Hãy thử tải lại trang!",
           "error",
         );
+        // Thử khởi động lại Peer nếu mất kết nối
+        initVoiceChat();
         return;
       }
 
+      // Đảo ngược trạng thái Mic (Bật <-> Tắt)
       isMicEnabled = !isMicEnabled;
-      if (myStream) myStream.getAudioTracks()[0].enabled = isMicEnabled;
+
+      // Bật/Tắt track âm thanh thực tế
+      const audioTrack = myStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = isMicEnabled;
+      }
+
+      // Cập nhật giao diện nút Mic
       updateMicUI(isMicEnabled);
+
+      // Cập nhật trạng thái lên Server để người khác thấy
       db.collection("watchRooms")
         .doc(currentRoomId)
         .collection("members")
@@ -850,6 +876,14 @@ function toggleMyMic() {
         .update({
           isMicMuted: !isMicEnabled,
         });
+
+      // Thông báo nhỏ cho người dùng biết
+      if (isMicEnabled) {
+        showNotification("Micro đang bật 🎙️", "success");
+      }
+    })
+    .catch((err) => {
+      console.error("Lỗi toggle Mic:", err);
     });
 }
 
