@@ -345,7 +345,7 @@ async function setupMemberAndChat(roomId, roomRef) {
       if (myStream) myStream.getAudioTracks()[0].enabled = false;
       isMicEnabled = false;
       updateMicUI(false);
-      showNotification("Host đã tắt mic của bạn", "warning");
+      showNotification("Chủ phòng đã tắt mic của bạn", "warning");
       roomRef
         .collection("members")
         .doc(currentUser.uid)
@@ -1064,3 +1064,79 @@ styleAdmin.innerHTML = `
     .room-tab-content.active { display: flex !important; flex-direction: column; }
 `;
 document.head.appendChild(styleAdmin);
+// ============================================================
+// PHẦN BỔ SUNG CUỐI CÙNG: PLAYER & KICK (DÁN NỐI TIẾP)
+// ============================================================
+
+// 1. Hàm Kick (Đuổi thành viên) - Trước đó bạn bị thiếu hàm này
+window.kickUser = async function (uid, name) {
+  if (!currentRoomId) return;
+  if (!confirm(`Bạn có chắc muốn mời ${name} ra khỏi phòng?`)) return;
+
+  try {
+    await db
+      .collection("watchRooms")
+      .doc(currentRoomId)
+      .collection("members")
+      .doc(uid)
+      .delete();
+    // Giảm số lượng thành viên đi 1
+    await db
+      .collection("watchRooms")
+      .doc(currentRoomId)
+      .update({
+        memberCount: firebase.firestore.FieldValue.increment(-1),
+      });
+    showNotification(`Đã mời ${name} ra khỏi phòng`, "success");
+  } catch (e) {
+    console.error("Lỗi kick user:", e);
+  }
+};
+
+// 2. Các hàm điều khiển Player (Play, Pause, Tua) - Gán vào window để HTML gọi được
+window.syncPlay = function () {
+  if (player && isHost) {
+    player.playVideo();
+    updateRoomState("playing", player.getCurrentTime());
+  } else if (!isHost) {
+    showNotification("Chỉ chủ phòng mới được bấm Play!", "warning");
+  }
+};
+
+window.syncPause = function () {
+  if (player && isHost) {
+    player.pauseVideo();
+    updateRoomState("paused", player.getCurrentTime());
+  } else if (!isHost) {
+    showNotification("Chỉ chủ phòng mới được bấm Pause!", "warning");
+  }
+};
+
+window.syncSeek = function (seconds) {
+  if (player && isHost) {
+    const currentTime = player.getCurrentTime();
+    const newTime = currentTime + seconds;
+    player.seekTo(newTime, true);
+    updateRoomState("buffering", newTime);
+  } else if (!isHost) {
+    showNotification("Chỉ chủ phòng mới được tua!", "warning");
+  }
+};
+
+// Hàm cập nhật trạng thái phòng lên Firebase (Hỗ trợ cho Player)
+async function updateRoomState(status, time) {
+  if (!currentRoomId) return;
+  // Debounce: Tránh gửi quá nhiều request cùng lúc
+  if (Date.now() - lastSyncTime < 500) return;
+  lastSyncTime = Date.now();
+
+  try {
+    await db.collection("watchRooms").doc(currentRoomId).update({
+      status: status,
+      currentTime: time,
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    console.error("Lỗi sync:", e);
+  }
+}
