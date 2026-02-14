@@ -890,3 +890,17 @@
 [data-theme="light"] .footer-section ul li a {
   color: #555 !important;
 }
+/* --- HIỆU ỨNG AVATAR KHI NÓI (VOICE CHAT) --- */
+.is-speaking .avatar-img {
+  border: 3px solid #2ecc71 !important; /* Viền xanh lá */
+  box-shadow: 0 0 15px #2ecc71 !important; /* Phát sáng */
+  transform: scale(1.1); /* Phóng to nhẹ */
+  transition: all 0.1s ease-in-out; /* Hiệu ứng mượt */
+  z-index: 10;
+}
+
+/* Hiệu ứng rung nhẹ cho cả dòng thành viên */
+.member-item.is-speaking {
+  background-color: rgba(46, 204, 113, 0.1);
+  border-radius: 8px;
+}

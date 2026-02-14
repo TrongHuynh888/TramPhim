@@ -766,32 +766,48 @@ function connectToAllPeers() {
     });
 }
 // 👇 HÀM MỚI: Phân tích âm lượng để tạo hiệu ứng nói 👇
+// 👇 HÀM MỚI: Phân tích âm lượng (Fix lỗi Chrome tự ngắt)
 function monitorAudioLevel(stream, peerId) {
   try {
-    // 👇 FIX: Dùng Singleton AudioContext để tránh lỗi giới hạn (max 6 context)
     if (!globalAudioContext) {
       globalAudioContext = new (
         window.AudioContext || window.webkitAudioContext
       )();
     }
-    if (globalAudioContext.state === "suspended") globalAudioContext.resume();
+    // Luôn đảm bảo AudioContext đang chạy
+    if (globalAudioContext.state === "suspended") {
+      globalAudioContext.resume();
+    }
 
     const audioContext = globalAudioContext;
     const source = audioContext.createMediaStreamSource(stream);
     const analyser = audioContext.createAnalyser();
 
+    // 1. Kết nối nguồn -> Bộ phân tích
     source.connect(analyser);
-    analyser.fftSize = 256;
 
+    // 🔥 FIX QUAN TRỌNG: KẾT NỐI VÀO LOA ẢO (MUTE) 🔥
+    // Điều này lừa trình duyệt rằng stream đang được sử dụng,
+    // giúp ngăn chặn việc trình duyệt tự động "đóng băng" bộ phân tích.
+    const gainZero = audioContext.createGain();
+    gainZero.gain.value = 0; // Tắt tiếng hoàn toàn (để không bị vọng)
+    source.connect(gainZero);
+    gainZero.connect(audioContext.destination);
+
+    // Cấu hình bộ phân tích
+    analyser.fftSize = 256;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
+    // Hàm vòng lặp kiểm tra âm lượng
     const checkVolume = () => {
-      // Tìm dòng thành viên tương ứng
+      // Tìm UI của thành viên
       const memberRow = document.getElementById(`member-row-${peerId}`);
+
+      // Nếu thành viên đã thoát -> Dừng kiểm tra, ngắt kết nối để nhẹ máy
       if (!memberRow) {
-        // Nếu người dùng đã rời phòng -> Dừng kiểm tra để đỡ lag
-        audioContext.close();
+        source.disconnect();
+        gainZero.disconnect();
         return;
       }
 
@@ -804,12 +820,12 @@ function monitorAudioLevel(stream, peerId) {
       }
       const average = sum / bufferLength;
 
-      // Ngưỡng phát hiện nói (10 là vừa phải)
-      const speakingThreshold = 10;
+      // Ngưỡng nhạy (Giảm xuống 5 cho dễ nháy)
+      const speakingThreshold = 5;
       const avatar = memberRow.querySelector(".avatar-img");
 
       if (average > speakingThreshold) {
-        // Đang nói -> Thêm class hiệu ứng
+        // Đang nói -> Thêm class
         if (avatar) avatar.classList.add("is-speaking");
         memberRow.classList.add("is-speaking");
       } else {
@@ -821,9 +837,9 @@ function monitorAudioLevel(stream, peerId) {
       requestAnimationFrame(checkVolume);
     };
 
-    checkVolume(); // Bắt đầu vòng lặp
+    checkVolume(); // Bắt đầu chạy
   } catch (e) {
-    console.warn("Audio Context Error:", e);
+    console.warn("Lỗi phân tích âm thanh:", e);
   }
 }
 function addAudioStream(audio, stream, peerId) {
