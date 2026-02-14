@@ -631,10 +631,11 @@ async function getTurnCredentials() {
 }
 
 // --- HÀM KHỞI TẠO KẾT NỐI (ĐÃ NÂNG CẤP ASYNC) ---
+// --- HÀM KHỞI TẠO KẾT NỐI (FIX CHO MOBILE/TABLET) ---
 async function startPeerConnection() {
   addMicButtonToUI();
 
-  // 1. Đánh thức Audio Context (Quan trọng cho Mobile)
+  // 1. Đánh thức Audio Context NGAY LẬP TỨC (Bắt buộc cho iOS)
   if (!globalAudioContext) {
     globalAudioContext = new (
       window.AudioContext || window.webkitAudioContext
@@ -645,77 +646,105 @@ async function startPeerConnection() {
   }
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.warn("Trình duyệt không hỗ trợ Voice Chat");
+    showNotification("Trình duyệt không hỗ trợ Voice Chat", "error");
     return;
   }
 
-  // 2. LẤY DANH SÁCH MÁY CHỦ ICE (Chờ lấy xong mới kết nối)
-  const iceServers = await getTurnCredentials();
-
-  // 3. CẤU HÌNH MIC (CHỐNG VANG TỐI ĐA)
+  // 2. CẤU HÌNH MIC (CHỐNG VANG)
   const audioConstraints = {
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
-    channelCount: 1, // Mono (Dễ khử vang hơn)
+    channelCount: 1,
     sampleRate: 48000,
   };
 
-  navigator.mediaDevices
-    .getUserMedia({ audio: audioConstraints, video: false })
-    .then((stream) => {
-      myStream = stream;
-
-      // Mặc định tắt Mic khi mới vào
-      isMicEnabled = false;
-      if (myStream.getAudioTracks().length > 0) {
-        myStream.getAudioTracks()[0].enabled = false;
-      }
-      updateMicUI(false);
-
-      monitorAudioLevel(stream, currentUser.uid);
-
-      // 4. TẠO PEER VỚI DANH SÁCH SERVER VỪA LẤY
-      myPeer = new Peer(currentUser.uid, {
-        config: {
-          iceServers: iceServers, // 👉 Nạp server xịn vào đây
-          iceTransportPolicy: "all",
-          iceCandidatePoolSize: 10,
-        },
-        debug: 1,
-      });
-
-      myPeer.on("open", (id) => {
-        console.log("✅ Đã kết nối Voice Chat (Xuyên VPN) ID:", id);
-        connectToAllPeers();
-      });
-
-      myPeer.on("call", (call) => {
-        call.answer(myStream);
-        const audio = document.createElement("audio");
-        const callerId = call.peer;
-        call.on("stream", (userAudioStream) => {
-          addAudioStream(audio, userAudioStream, callerId);
-        });
-      });
-
-      myPeer.on("error", (err) => {
-        console.warn("Lỗi PeerJS:", err);
-        // Tự động kết nối lại nếu bị rớt mạng
-        if (
-          err.type === "disconnected" ||
-          err.type === "network" ||
-          err.type === "server-error"
-        ) {
-          console.log("🔄 Đang thử kết nối lại...");
-          setTimeout(() => myPeer.reconnect(), 3000);
-        }
-      });
-    })
-    .catch((err) => {
-      console.error("Lỗi Mic:", err);
-      showNotification("Vui lòng CHO PHÉP quyền Micro!", "error");
+  try {
+    // 🔥 CHIẾN THUẬT SONG SONG (QUAN TRỌNG) 🔥
+    // Xin quyền Mic NGAY LẬP TỨC (Không được chờ API Metered)
+    const streamPromise = navigator.mediaDevices.getUserMedia({
+      audio: audioConstraints,
+      video: false,
     });
+
+    // Đồng thời gọi API lấy Server trong nền
+    const serverPromise = getTurnCredentials();
+
+    // Chờ cả 2 cùng xong (Tiết kiệm thời gian & không mất quyền)
+    console.log("⏳ Đang xin quyền Mic & Lấy Server cùng lúc...");
+    const [stream, iceServers] = await Promise.all([
+      streamPromise,
+      serverPromise,
+    ]);
+
+    // --- KHI ĐÃ CÓ CẢ 2 ---
+    console.log("✅ Đã có Mic và Server!");
+    myStream = stream;
+
+    // Mặc định tắt Mic để không bị hú
+    isMicEnabled = false;
+    if (myStream.getAudioTracks().length > 0) {
+      myStream.getAudioTracks()[0].enabled = false;
+    }
+    updateMicUI(false);
+
+    // Kích hoạt phân tích sóng âm
+    monitorAudioLevel(stream, currentUser.uid);
+
+    // 3. TẠO PEER VỚI SERVER XỊN
+    myPeer = new Peer(currentUser.uid, {
+      config: {
+        iceServers: iceServers, // Server Metered
+        iceTransportPolicy: "all",
+        iceCandidatePoolSize: 10,
+      },
+      debug: 1, // Ít log lại cho nhẹ máy
+    });
+
+    myPeer.on("open", (id) => {
+      console.log("✅ Kết nối thành công ID:", id);
+      connectToAllPeers();
+    });
+
+    myPeer.on("call", (call) => {
+      call.answer(myStream);
+      const audio = document.createElement("audio");
+      const callerId = call.peer;
+
+      // Xử lý khi nhận luồng âm thanh
+      call.on("stream", (userAudioStream) => {
+        addAudioStream(audio, userAudioStream, callerId);
+      });
+    });
+
+    myPeer.on("error", (err) => {
+      console.warn("Lỗi PeerJS:", err);
+      // Tự động kết nối lại nếu rớt mạng
+      if (
+        err.type === "disconnected" ||
+        err.type === "network" ||
+        err.type === "server-error"
+      ) {
+        setTimeout(() => {
+          if (myPeer && !myPeer.destroyed) myPeer.reconnect();
+        }, 3000);
+      }
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khởi tạo Voice:", err);
+
+    if (
+      err.name === "NotAllowedError" ||
+      err.name === "PermissionDeniedError"
+    ) {
+      showNotification(
+        "Bạn đã từ chối quyền Micro! Hãy vào Cài đặt -> Quyền riêng tư để bật lại.",
+        "error",
+      );
+    } else {
+      showNotification("Lỗi kết nối Voice Chat. Hãy thử lại!", "error");
+    }
+  }
 }
 
 function connectToAllPeers() {
