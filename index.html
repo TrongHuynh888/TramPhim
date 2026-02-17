@@ -392,7 +392,7 @@
               <div class="movie-actions">
                 <div class="card-price" style="font-size: 24px">
                   <i class="fas fa-coins"></i>
-                  <span id="detailPrice">0</span> CRO
+                  <span id="detailPrice">0</span>
                 </div>
                 <button
                   class="btn btn-primary btn-lg"
@@ -408,15 +408,26 @@
           <!-- Video Player -->
           <div class="video-container" id="videoContainer">
             <div class="video-locked" id="videoLocked">
-              <i class="fas fa-lock"></i>
-              <h3>Video Đã Bị Khóa</h3>
-              <p>
-                Vui lòng mua vé để mở khóa và xem phim. Thanh toán nhanh chóng,
-                an toàn bằng CRO Token.
-              </p>
-              <button class="btn btn-primary btn-lg" onclick="buyTicket()">
-                <i class="fas fa-unlock"></i> Mở Khóa Ngay
-              </button>
+              <div class="video-locked-bg"></div>
+              <div class="video-locked-content">
+                <div class="lock-icon-wrapper">
+                  <i class="fas fa-lock"></i>
+                </div>
+                <div class="locked-info">
+                  <span class="locked-badge"> PREMIUM</span>
+                  <h3>Phim Trả Phí</h3>
+                  <p class="movie-title" id="lockedMovieTitle">Tên phim</p>
+                  <p class="unlock-text">
+                    Mua vé để mở khóa và thưởng thức phim chất lượng cao với giá chỉ từ <span class="price-highlight" id="lockedPrice">...</span>
+                  </p>
+                </div>
+                <button class="btn btn-unlock btn-lg" onclick="buyTicket()">
+                  <i class="fas fa-unlock"></i> <span>Mua Vé Ngay</span>
+                </button>
+                <p class="secure-text">
+                  <i class="fas fa-shield-alt"></i> Thanh toán an toàn bằng CRO Token
+                </p>
+              </div>
             </div>
             <iframe
               id="videoPlayer"

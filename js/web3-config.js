@@ -153,27 +153,45 @@ async function switchToCronos() {
 // THANH TOÁN CRO
 // ============================================
 async function payWithCRO(amount, movieId, movieTitle) {
-  if (!isConnected) {
+  console.log("🔄 Bắt đầu thanh toán:", amount, "CRO cho phim:", movieTitle);
+  
+  // Kiểm tra MetaMask trước
+  if (!checkMetamask()) {
+    showNotification("Vui lòng cài đặt Metamask để thanh toán!", "error");
+    window.open("https://metamask.io/download/", "_blank");
+    return null;
+  }
+
+  // Kiểm tra và kết nối ví nếu chưa kết nối
+  if (!isConnected || !userAddress) {
+    console.log("🔗 Đang kết nối ví MetaMask...");
+    showNotification("Vui lòng kết nối ví MetaMask...", "info");
+    
     const connected = await connectWallet();
-    if (!connected) return null;
+    if (!connected) {
+      showNotification("Không thể kết nối ví MetaMask!", "error");
+      return null;
+    }
   }
 
   try {
     // Hiển thị loading
     showPaymentLoading(true);
+    showNotification("Đang tạo giao dịch...", "info");
 
     // Chuyển đổi số CRO sang Wei (18 decimals)
     const amountInWei = ethers.utils.parseEther(amount.toString());
+    console.log("💰 Số tiền (Wei):", amountInWei.toString());
 
     // Tạo transaction
+    console.log("📤 Đang gửi transaction đến:", RECEIVER_WALLET);
     const tx = await signer.sendTransaction({
       to: RECEIVER_WALLET,
       value: amountInWei,
     });
 
     console.log("📤 Transaction đã gửi:", tx.hash);
-    // Chỉ hiển thị 1 thông báo duy nhất khi thành công
-    // (Không hiển thị thông báo "đang xử lý" vì sẽ có thông báo thành công sau)
+    showNotification("Transaction đã gửi! Vui lòng xác nhận trong MetaMask...", "info");
 
     // Đợi transaction được confirm
     const receipt = await tx.wait();
@@ -205,6 +223,8 @@ async function payWithCRO(amount, movieId, movieTitle) {
       showNotification("Bạn đã hủy giao dịch", "warning");
     } else if (error.code === -32603) {
       showNotification("Số dư không đủ để thanh toán", "error");
+    } else if (error.message && error.message.includes("user rejected")) {
+      showNotification("Bạn đã hủy giao dịch", "warning");
     } else {
       showNotification("Lỗi thanh toán. Vui lòng thử lại!", "error");
     }
@@ -359,6 +379,23 @@ function disconnectWallet() {
 
   showNotification("Đã ngắt kết nối ví!", "info");
   console.log("❌ Đã ngắt kết nối ví");
+}
+
+// ============================================
+// HIỂN THỊ LOADING THANH TOÁN
+// ============================================
+function showPaymentLoading(show) {
+  // Tìm nút mua vé để hiển thị trạng thái loading
+  const buyBtn = document.getElementById("buyTicketBtn");
+  if (!buyBtn) return;
+
+  if (show) {
+    buyBtn.disabled = true;
+    buyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+  } else {
+    buyBtn.disabled = false;
+    buyBtn.innerHTML = '<i class="fas fa-ticket-alt"></i> Mua Vé Ngay';
+  }
 }
 
 // Export thêm hàm này để dùng được bên ngoài

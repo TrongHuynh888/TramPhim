@@ -204,15 +204,184 @@
 .video-locked {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-lg);
-  text-align: center;
-  padding: var(--spacing-xl);
+  padding: 20px;
   z-index: 10;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.video-locked-bg {
+  position: absolute;
+  inset: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+  opacity: 0.5;
+}
+
+.video-locked-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 320px;
+  animation: fadeInUp 0.5s ease-out;
+  box-sizing: border-box;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lock-icon-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e94560, #ff6b6b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 25px rgba(233, 69, 96, 0.4);
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.lock-icon-wrapper i {
+  font-size: 28px;
+  color: white;
+}
+
+.video-locked .locked-info {
+  margin-bottom: 18px;
+}
+
+.video-locked .locked-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #ffd700, #ffaa00);
+  color: #1a1a2e;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.video-locked h3 {
+  font-size: 20px;
+  margin: 0 0 6px 0;
+  color: white;
+  font-weight: 700;
+}
+
+.video-locked .movie-title {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 12px 0;
+}
+
+.video-locked .unlock-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.video-locked .price-highlight {
+  color: #ffd700;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.video-locked .btn-unlock {
+  background: linear-gradient(135deg, #e94560, #ff6b6b);
+  border: none;
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 25px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-locked .btn-unlock:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.6);
+}
+
+.video-locked .btn-unlock i {
+  font-size: 14px;
+}
+
+.video-locked .secure-text {
+  margin-top: 14px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.video-locked .secure-text i {
+  color: #4ade80;
+}
+
+/* Responsive for video locked */
+@media (max-width: 576px) {
+  .video-locked-content {
+    padding: 0 15px;
+    max-width: 100%;
+  }
+  
+  .lock-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 12px;
+  }
+  
+  .lock-icon-wrapper i {
+    font-size: 24px;
+  }
+  
+  .video-locked h3 {
+    font-size: 18px;
+  }
+  
+  .video-locked .movie-title {
+    font-size: 12px;
+  }
+  
+  .video-locked .unlock-text {
+    font-size: 12px;
+  }
+  
+  .video-locked .price-highlight {
+    font-size: 14px;
+  }
+  
+  .video-locked .btn-unlock {
+    padding: 8px 20px;
+    font-size: 13px;
+  }
 }
 .video-locked i {
   font-size: 64px;

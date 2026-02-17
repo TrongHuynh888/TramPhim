@@ -262,7 +262,11 @@ async function viewMovieDetail(movieId) {
   document.getElementById("detailRating").textContent = movie.rating || 0;
   document.getElementById("detailDescription").textContent =
     movie.description || "Chưa có mô tả";
-  document.getElementById("detailPrice").textContent = movie.price || 0;
+  // Hiển thị giá phim - nếu miễn phí thì hiển thị "Miễn phí", có giá thì thêm "CRO"
+  const priceDisplay = !movie.price || movie.price === 0 
+    ? "Miễn phí" 
+    : `${movie.price} CRO`;
+  document.getElementById("detailPrice").textContent = priceDisplay;
 
   // Render tags
   const tagsContainer = document.getElementById("detailTags");
@@ -346,6 +350,24 @@ async function checkAndUpdateVideoAccess() {
 
   let hasAccess = false;
 
+  // Lấy thông tin phim hiện tại để kiểm tra giá
+  const currentMovie = allMovies.find(m => m.id === currentMovieId);
+  const isFreeMovie = !currentMovie?.price || currentMovie.price === 0;
+  
+  // Cập nhật thông tin phim trong giao diện khóa
+  const lockedMovieTitle = document.getElementById("lockedMovieTitle");
+  const lockedPrice = document.getElementById("lockedPrice");
+  if (lockedMovieTitle && currentMovie) {
+    lockedMovieTitle.textContent = currentMovie.title || "Phim";
+  }
+  if (lockedPrice && currentMovie) {
+    if (!currentMovie.price || currentMovie.price === 0) {
+      lockedPrice.textContent = "Miễn phí";
+    } else {
+      lockedPrice.textContent = `${currentMovie.price} CRO`;
+    }
+  }
+
   // Admin luôn có quyền xem
   if (isAdmin) {
     hasAccess = true;
@@ -364,7 +386,20 @@ async function checkAndUpdateVideoAccess() {
       buyTicketBtn.style.border = "none";
       buyTicketBtn.disabled = true; // Không cho bấm mua nữa
     }
-  } else if (currentUser && currentMovieId) {
+  }
+  // 👇 THÊM: Phim miễn phí - ai cũng được xem (không cần đăng nhập) 👇
+  else if (isFreeMovie) {
+    hasAccess = true;
+    
+    // Cập nhật nút cho phim miễn phí
+    if (buyTicketBtn) {
+      buyTicketBtn.innerHTML = '<i class="fas fa-play"></i> Xem Miễn Phí';
+      buyTicketBtn.classList.add("btn-success");
+      buyTicketBtn.classList.remove("btn-primary");
+      buyTicketBtn.disabled = false;
+    }
+  }
+  else if (currentUser && currentMovieId) {
     // Kiểm tra đã mua chưa
     hasAccess = await checkMoviePurchased(currentMovieId);
   }
@@ -373,10 +408,19 @@ async function checkAndUpdateVideoAccess() {
     // Mở khóa giao diện (Code cũ)
     videoLocked.classList.add("hidden");
     videoPlayer.classList.remove("hidden");
-    buyTicketBtn.innerHTML = '<i class="fas fa-check"></i> Đã mua vé';
-    buyTicketBtn.disabled = true;
-    buyTicketBtn.classList.remove("btn-primary");
-    buyTicketBtn.classList.add("btn-success");
+    
+    // Hiển thị nút phù hợp với loại phim
+    if (isFreeMovie) {
+      buyTicketBtn.innerHTML = '<i class="fas fa-play"></i> Xem Miễn Phí';
+      buyTicketBtn.disabled = false;
+      buyTicketBtn.classList.remove("btn-primary");
+      buyTicketBtn.classList.add("btn-success");
+    } else {
+      buyTicketBtn.innerHTML = '<i class="fas fa-check"></i> Đã mua vé';
+      buyTicketBtn.disabled = true;
+      buyTicketBtn.classList.remove("btn-primary");
+      buyTicketBtn.classList.add("btn-success");
+    }
 
     // 👇 LOGIC HYBRID PLAYER (SỬA Ở ĐÂY) 👇
     const movie = allMovies.find((m) => m.id === currentMovieId);
@@ -1317,12 +1361,30 @@ async function buyTicket() {
     return;
   }
 
-  // Thực hiện thanh toán
-  const txHash = await payWithCRO(movie.price, currentMovieId, movie.title);
+  // Kiểm tra phim miễn phí
+  if (!movie.price || movie.price === 0) {
+    showNotification("Phim này miễn phí! Không cần mua vé.", "info");
+    checkAndUpdateVideoAccess();
+    return;
+  }
 
-  if (txHash) {
-    // Thanh toán thành công - mở khóa video
-    await checkAndUpdateVideoAccess();
+  // Hiển thị thông báo đang xử lý
+  showNotification("Đang kết nối ví MetaMask...", "info");
+
+  // Thực hiện thanh toán - payWithCRO sẽ tự động kết nối ví nếu chưa kết nối
+  try {
+    const txHash = await payWithCRO(movie.price, currentMovieId, movie.title);
+
+    if (txHash) {
+      // Thanh toán thành công - mở khóa video
+      await checkAndUpdateVideoAccess();
+    } else {
+      // Thanh toán thất bại hoặc bị hủy
+      showNotification("Thanh toán thất bại hoặc bị hủy. Vui lòng thử lại!", "warning");
+    }
+  } catch (error) {
+    console.error("Lỗi thanh toán:", error);
+    showNotification("Đã xảy ra lỗi khi thanh toán. Vui lòng thử lại!", "error");
   }
 }
 /**
