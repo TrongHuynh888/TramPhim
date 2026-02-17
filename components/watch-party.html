@@ -239,13 +239,16 @@
         </div>
         <div class="form-group hidden" id="roomPassGroup">
           <label>Mật khẩu</label>
-          <input
-            type="password"
-            class="form-input"
-            id="roomPassword"
-            placeholder="Nhập mật khẩu..."
-            autocomplete="new-password"
-          />
+          <div class="password-input-wrapper">
+            <input
+              type="password"
+              class="form-input"
+              id="roomPassword"
+              placeholder="Nhập mật khẩu..."
+              autocomplete="new-password"
+            />
+            <i class="fas fa-eye password-toggle-icon" onclick="togglePassword('roomPassword', this)"></i>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%">
           Tạo & Vào Ngay 🚀

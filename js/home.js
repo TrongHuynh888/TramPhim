@@ -96,9 +96,13 @@ function createMovieCard(movie) {
   return `
     <div class="movie-card-wrapper" id="movie-wrapper-${movie.id}" onclick="handleMovieClick(event, '${movie.id}')">
         
-        <div class="card movie-card-static">
+        <div class="card movie-card movie-card-static">
             <div class="card-image">
                 <img src="${movie.posterUrl}" alt="${movie.title}" loading="lazy" onerror="this.src='${fallbackImage}';">
+                <!-- Watch Progress Bar -->
+                <div class="watch-progress-container" id="progress-${movie.id}">
+                    <div class="watch-progress-bar" style="width: 0%"></div>
+                </div>
             </div>
             <div class="card-body">
                 <h4 class="card-title">${movie.title}</h4>

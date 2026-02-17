@@ -172,10 +172,8 @@ async function payWithCRO(amount, movieId, movieTitle) {
     });
 
     console.log("📤 Transaction đã gửi:", tx.hash);
-    showNotification(
-      `Đang xử lý giao dịch... TX: ${tx.hash.substring(0, 10)}...`,
-      "info",
-    );
+    // Chỉ hiển thị 1 thông báo duy nhất khi thành công
+    // (Không hiển thị thông báo "đang xử lý" vì sẽ có thông báo thành công sau)
 
     // Đợi transaction được confirm
     const receipt = await tx.wait();
@@ -300,10 +298,10 @@ function updateWalletUI() {
   if (walletBtn && isConnected && userAddress) {
     // Hiển thị địa chỉ ví rút gọn
     walletBtn.innerHTML = `
-            <i class="fas fa-wallet"></i>
-            ${userAddress.substring(0, 6)}...${userAddress.substring(38)}
-            <i class="fas fa-sign-out-alt" style="margin-left: 5px; font-size: 12px;"></i>
-        `;
+      <i class="fas fa-wallet"></i>
+      <span class="wallet-btn-text">${userAddress.substring(0, 6)}...${userAddress.substring(38)}</span>
+      <i class="fas fa-sign-out-alt" style="margin-left: 5px; font-size: 12px;"></i>
+    `;
     walletBtn.classList.add("connected");
 
     // 👉 QUAN TRỌNG: Khi click vào nút đã kết nối -> Hỏi đăng xuất
@@ -352,7 +350,7 @@ function disconnectWallet() {
   // 2. Reset giao diện nút bấm về ban đầu
   const walletBtn = document.getElementById("walletBtn");
   if (walletBtn) {
-    walletBtn.innerHTML = '<i class="fas fa-wallet"></i> Kết nối ví';
+    walletBtn.innerHTML = '<i class="fas fa-wallet"></i><span class="wallet-btn-text">Kết nối ví</span>';
     walletBtn.classList.remove("connected");
 
     // Gán lại sự kiện click để kết nối lại

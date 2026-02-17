@@ -219,6 +219,21 @@
   background: var(--accent-neon);
   color: var(--bg-primary);
   font-weight: 700;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+}
+.wallet-btn i {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+}
+.wallet-btn span {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  line-height: 1.2 !important;
 }
 .wallet-btn.connected {
   background: var(--success);
@@ -267,6 +282,33 @@
   background-repeat: no-repeat;
   background-position: right 16px center;
   padding-right: 40px;
+}
+
+/* Password input with toggle icon */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper .form-input {
+  padding-right: 45px;
+}
+
+.password-toggle-icon {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: color var(--transition-fast);
+  background: none;
+  border: none;
+  padding: 4px;
+}
+
+.password-toggle-icon:hover {
+  color: var(--accent-secondary);
 }
 
 /* ============================================

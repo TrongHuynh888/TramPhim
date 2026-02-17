@@ -206,7 +206,8 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   /* FIX PADDING PAGE MOBILE (Tránh khoảng đen thừa do rule tablet 100px) */
   .page {
     padding-top: 60px !important;
-    min-height: auto !important;
+    min-height: 100vh !important;
+    background: var(--bg-primary) !important;
   }
 
   /* 1. Logo */
@@ -284,8 +285,10 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     color: var(--text-primary) !important;
     display: block !important;
   }
-  .wallet-btn span {
-    flex-shrink: 0 !important;
+  .wallet-btn span,
+  .wallet-btn .wallet-btn-text,
+  #connectWalletBtn span {
+    display: none !important;
   }
 
   /* FIX: Dropdown (Select) không bị tràn màn hình */
@@ -846,7 +849,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     height: 100vh;
     z-index: 6000;
     transition: left 0.3s;
-    background: #1a1a2e;
+    background: var(--bg-secondary);
   }
   .admin-sidebar.active {
     left: 0 !important;
@@ -1354,7 +1357,7 @@ body[data-theme="light"] .chat-msg .author {
   /* --- 1. CẤU HÌNH CHUNG --- */
   html,
   body {
-    background: #0f0f13 !important;
+    background: var(--bg-primary) !important;
     /* Reset lại mọi thuộc tính position có thể gây lỗi */
     position: static !important;
     width: 100% !important;
@@ -1369,6 +1372,8 @@ body[data-theme="light"] .chat-msg .author {
   /* ĐẢM BẢO .page KHÔNG BỊ NAV CHE - ÁP DỤNG MỌI ORIENTATION */
   .page {
     padding-top: 60px !important;
+    min-height: 100vh !important;
+    background: var(--bg-primary) !important;
   }
   #partyRoom.page {
     padding-top: 0 !important;
@@ -1382,7 +1387,8 @@ body[data-theme="light"] .chat-msg .author {
     .page {
       padding-top: 60px !important;
       margin-top: 0 !important;
-      min-height: 80vh !important;
+      min-height: 100vh !important;
+      background: var(--bg-primary) !important;
     }
     #partyRoom.page {
       padding-top: 0 !important;
@@ -1414,7 +1420,7 @@ body[data-theme="light"] .chat-msg .author {
       right: 0 !important;
       bottom: 0 !important;
       width: 100% !important;
-      background: #0f0f13 !important;
+      background: var(--bg-primary) !important;
       padding: 0 !important;
       margin: 0 !important;
       overflow: hidden !important;
@@ -1439,7 +1445,7 @@ body[data-theme="light"] .chat-msg .author {
       flex-wrap: wrap !important;
       justify-content: center !important;
       align-items: center !important;
-      background: #151521 !important;
+      background: var(--bg-secondary) !important;
       padding: 6px 10px !important;
       margin: 0 !important;
       border-radius: 0 !important;
@@ -1457,7 +1463,7 @@ body[data-theme="light"] .chat-msg .author {
       font-weight: 700 !important;
       margin-bottom: 4px !important;
       font-size: 14px !important;
-      color: #fff !important;
+      color: var(--text-primary) !important;
       display: block !important;
     }
     .room-meta {
@@ -1472,7 +1478,7 @@ body[data-theme="light"] .chat-msg .author {
       width: 100% !important;
       display: flex !important;
       flex-direction: column !important;
-      background: #000 !important;
+      background: var(--bg-primary) !important;
       position: relative !important;
       margin: 0 !important;
       padding: 0 !important;
@@ -1509,7 +1515,7 @@ body[data-theme="light"] .chat-msg .author {
       width: 100% !important;
       overflow-x: auto !important;
       white-space: nowrap !important;
-      background: #151521 !important;
+      background: var(--bg-secondary) !important;
       padding: 8px 10px !important;
       display: flex !important;
       gap: 8px !important;
@@ -1517,7 +1523,7 @@ body[data-theme="light"] .chat-msg .author {
       flex-shrink: 0 !important;
       position: relative !important;
       transform: none !important;
-      border-top: 1px solid rgba(255,255,255,0.1) !important;
+      border-top: 1px solid var(--border-color) !important;
     }
 
     /* Chat Dọc - FILL ĐÚNG PHẦN CÒN LẠI GIỮA CONTROLS VÀ INPUT */
@@ -1528,7 +1534,7 @@ body[data-theme="light"] .chat-msg .author {
       flex-direction: column !important;
       flex: 1 !important;
       min-height: 0 !important; /* Quan trọng: cho phép co lại */
-      background: #0f0f13 !important;
+      background: var(--bg-primary) !important;
       border: none !important;
       border-radius: 0 !important;
       order: 4 !important;
@@ -1539,13 +1545,13 @@ body[data-theme="light"] .chat-msg .author {
     .room-tabs {
       height: 42px !important;
       min-height: 42px !important;
-      background: #252545 !important;
+      background: var(--bg-secondary) !important;
       flex-shrink: 0 !important;
       display: flex !important;
       visibility: visible !important;
       opacity: 1 !important;
       border-top: 2px solid #7c3aed !important;
-      border-bottom: 1px solid rgba(255,255,255,0.15) !important;
+      border-bottom: 1px solid var(--border-color) !important;
       z-index: 10 !important;
       position: relative !important;
     }
@@ -1582,8 +1588,8 @@ body[data-theme="light"] .chat-msg .author {
       left: 0 !important;
       right: 0 !important;
       padding: 8px 10px !important;
-      background: #151521 !important;
-      border-top: 1px solid #333 !important;
+      background: var(--bg-secondary) !important;
+      border-top: 1px solid var(--border-color) !important;
       z-index: 9500 !important;
       display: flex !important;
       align-items: center !important;
@@ -1620,7 +1626,7 @@ body[data-theme="light"] .chat-msg .author {
       width: 100vw !important;
       height: 100vh !important;
       overflow: hidden !important;
-      background: #000 !important;
+      background: var(--bg-primary) !important;
       z-index: 9000 !important;
       padding: 0 !important;
       margin: 0 !important;
@@ -1651,7 +1657,7 @@ body[data-theme="light"] .chat-msg .author {
       align-items: center !important;
       justify-content: center !important;
       overflow: hidden !important;
-      background: #000 !important;
+      background: var(--bg-primary) !important;
       max-height: 100vh !important;
       padding: 0 !important;
       margin: 0 !important;
@@ -1677,8 +1683,8 @@ body[data-theme="light"] .chat-msg .author {
       width: 100% !important;
       height: 100% !important;
       max-height: 100vh !important;
-      background: #151521 !important;
-      border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+      background: var(--bg-secondary) !important;
+      border-left: 1px solid var(--border-color) !important;
       display: flex !important;
       flex-direction: column !important;
       z-index: 9100 !important;
@@ -1778,8 +1784,8 @@ body[data-theme="light"] .chat-msg .author {
     .chat-input-area {
       position: static !important;
       padding: 8px !important;
-      background: #151521 !important;
-      border-top: 1px solid rgba(255,255,255,0.1) !important;
+      background: var(--bg-secondary) !important;
+      border-top: 1px solid var(--border-color) !important;
       flex-shrink: 0 !important;
       display: flex !important;
       align-items: center !important;

@@ -192,7 +192,12 @@ async function openLibraryModal(type) {
         moviesToList = historyData
           .map((h) => {
             const movie = allMovies.find((m) => m.id === h.movieId);
-            return movie ? { ...movie, _lastEpisode: h.lastEpisode } : null;
+            return movie ? { 
+              ...movie, 
+              _lastEpisode: h.lastEpisode,
+              _minutesWatched: h.lastMinutesWatched || 0,
+              _timeWatched: h.lastTimeWatched || 0
+            } : null;
           })
           .filter((m) => m !== null);
       }
@@ -220,23 +225,38 @@ async function openLibraryModal(type) {
 
           // Thông tin phụ (Tập phim hoặc chất lượng)
           let metaInfo = `<span>${movie.year || "2026"}</span>`;
+          let progressBar = '';
           if (type === "history" && movie._lastEpisode !== undefined) {
+            const minutesWatched = movie._minutesWatched || 0;
+            const timeWatched = movie._timeWatched || 0;
+            // ✅ SỬA: Hiển thị thanh progress dựa trên thời gian đã xem
+            // Vì không có duration nên hiển thị thanh tương đối với mốc 60 phút (max 100%)
+            // Hoặc hiển thị thanh màu vàng cố định để cho biết đã xem
+            const progressPercent = Math.min(Math.round((minutesWatched / 60) * 100), 100);
+            progressBar = minutesWatched > 0 ? `
+                <div class="watch-progress-bar" style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(255,255,255,0.2);">
+                    <div style="width: ${progressPercent}%; height: 100%; background: #fcd535; transition: width 0.3s ease;"></div>
+                </div>
+            ` : '';
             metaInfo = `<span style="color: #fcd535; font-size: 10px;">
                             <i class="fas fa-play-circle"></i> Tập ${movie._lastEpisode + 1}
+                            ${minutesWatched > 0 ? `• ${minutesWatched} phút` : ''}
                          </span>`;
           } else {
             metaInfo += `<span style="color: var(--accent-secondary)">${movie.quality || "HD"}</span>`;
           }
 
           // 👇 ĐÃ THÊM ONERROR VÀO THẺ IMG BÊN DƯỚI 👇
+          // Click vào thẻ phim sẽ truyền cả thời gian đã xem
           return `
-            <div class="card" onclick="viewMovieDetail('${movie.id}')">
+            <div class="card" onclick="viewMovieFromHistory('${movie.id}', ${movie._lastEpisode || 0}, ${movie._timeWatched || 0})">
                 <div class="card-image">
                     ${removeBtn}
                     <img src="${movie.posterUrl}" 
                          alt="${movie.title}" 
                          loading="lazy"
                          onerror="this.onerror=null; this.src='https://placehold.co/300x450/2a2a3a/FFFFFF?text=NO+POSTER';">
+                    ${progressBar}
                 </div>
                 
                 <div class="card-body">

@@ -150,7 +150,7 @@
             style="margin-right: 10px;"
           >
             <i class="fas fa-wallet"></i>
-            <span>Kết nối ví</span>
+            <span class="wallet-btn-text">Kết nối ví</span>
           </button>
 
           <!-- Auth Button (ngay sau Wallet) -->
@@ -429,13 +429,13 @@
             
             <!-- Center Controls Overlay (New) -->
             <div class="center-controls-overlay" id="centerOverlay">
-                <button class="center-btn skip-btn" onclick="skipTime(-10)">
+                <button class="center-btn skip-btn" onclick="skipTime(-10); event.stopPropagation();">
                     <i class="fas fa-undo-alt"></i>
                 </button>
-                <button class="center-btn play-btn-large" onclick="togglePlay()">
+                <button class="center-btn play-btn-large" onclick="togglePlay(); event.stopPropagation();">
                     <i class="fas fa-play" id="centerPlayIcon"></i>
                 </button>
-                <button class="center-btn skip-btn" onclick="skipTime(10)">
+                <button class="center-btn skip-btn" onclick="skipTime(10); event.stopPropagation();">
                     <i class="fas fa-redo-alt"></i>
                 </button>
             </div>
@@ -700,7 +700,9 @@
 
     <script src="js/main.js"></script>
     <script src="js/loader.js"></script>
-
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
     <script>
       // Buộc trình duyệt phải dùng hàm này (Ghi đè mọi hàm cũ bị lỗi)
       window.showAdminPanel = function (panelName) {
@@ -767,5 +769,33 @@
       // Gọi hàm chạy ngay khi web mở
       loadUpgradePage();
     </script>
+    
+    <!-- Resume Watch Modal -->
+    <div class="modal-overlay" id="resumeWatchModal">
+        <div class="modal resume-watch-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-play-circle"></i> Tiếp Tục Xem Phim</h3>
+            </div>
+            <div class="modal-body">
+                <p id="resumeWatchMessage">Bạn có muốn tiếp tục xem phim từ vị trí đã dừng không?</p>
+                <div class="resume-info">
+                    <span class="resume-time-label">Thời gian đã xem:</span>
+                    <span class="resume-time-value" id="resumeWatchTime">--:--</span>
+                </div>
+                <div class="resume-info">
+                    <span class="resume-progress-label">Tiến trình:</span>
+                    <span class="resume-progress-value" id="resumeWatchPercent">0%</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="resumeFromStartBtn" onclick="handleResumeChoice(false)">
+                    <i class="fas fa-redo"></i> Xem Từ Đầu
+                </button>
+                <button class="btn btn-primary" id="resumeContinueBtn" onclick="handleResumeChoice(true)">
+                    <i class="fas fa-play"></i> Tiếp Tục
+                </button>
+            </div>
+        </div>
+    </div>
   </body>
 </html>

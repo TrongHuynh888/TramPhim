@@ -1,4 +1,20 @@
 /**
+ * Toggle hiện/ẩn mật khẩu
+ */
+function togglePassword(inputId, iconElement) {
+    const passwordInput = document.getElementById(inputId);
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        iconElement.classList.remove("fa-eye");
+        iconElement.classList.add("fa-eye-slash");
+    } else {
+        passwordInput.type = "password";
+        iconElement.classList.remove("fa-eye-slash");
+        iconElement.classList.add("fa-eye");
+    }
+}
+
+/**
  * Xử lý đăng nhập
  */
 async function handleLogin(event) {
@@ -293,6 +309,14 @@ async function handleAuthStateChange(user) {
     renderFeaturedMovies();
     renderNewMovies();
     renderAllMovies();
+    
+    // 6. Cập nhật watch progress cho các thẻ phim (đợi DOM cập nhật)
+    if (typeof updateAllWatchProgress === 'function') {
+        // Đợi một chút để DOM được cập nhật
+        setTimeout(() => {
+            updateAllWatchProgress();
+        }, 100);
+    }
 
     // Cập nhật trang chi tiết nếu đang xem
     if (currentMovieId) {

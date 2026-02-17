@@ -14,6 +14,11 @@ async function loadInitialData() {
 
     // Populate filter dropdowns
     populateFilters();
+    
+    // Cập nhật watch progress nếu đã đăng nhập
+    if (currentUser) {
+      await updateAllWatchProgress();
+    }
   } catch (error) {
     console.error("Lỗi load dữ liệu:", error);
   }
@@ -161,4 +166,95 @@ async function initializeSampleMovies() {
   } catch (error) {
     console.error("Lỗi khởi tạo movies:", error);
   }
+}
+
+/**
+ * Cập nhật thanh watch progress cho tất cả phim đã xem
+ * Gọi hàm này sau khi đăng nhập và sau khi load movies
+ */
+async function updateAllWatchProgress() {
+  if (!currentUser || !db) {
+    console.log("⏳ updateAllWatchProgress: Chưa đăng nhập hoặc chưa có DB");
+    return;
+  }
+  
+  if (!allMovies || allMovies.length === 0) {
+    console.log("⏳ updateAllWatchProgress: Chưa có movies");
+    return;
+  }
+  
+  try {
+    // Lấy tất cả watch progress của user từ collection "watchProgress" (có duration chính xác)
+    const snapshot = await db
+      .collection("users")
+      .doc(currentUser.uid)
+      .collection("watchProgress")
+      .get();
+    
+    if (snapshot.empty) {
+      console.log("⏳ updateAllWatchProgress: Không có watch progress");
+      return;
+    }
+    
+    console.log("📊 Tìm thấy", snapshot.size, "watch progress từ Firestore");
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const movieId = data.movieId;
+      const percentage = data.percentage || 0;
+      const currentTime = data.currentTime || 0;
+      const duration = data.duration || 0;
+      
+      // Chỉ hiển thị thanh progress khi đã xem > 0
+      if (percentage <= 0 && currentTime <= 0) return;
+      
+      // Sử dụng percentage từ watchProgress (đã tính dựa trên duration thực tế của video)
+      // Nếu không có thì tính lại từ movie data
+      let finalPercentage = percentage;
+      
+      if (finalPercentage <= 0 && currentTime > 0) {
+        const movie = allMovies.find(m => m.id === movieId);
+        if (movie && movie.duration) {
+          const durationMinutes = parseInt(movie.duration.replace(/\D/g, '')) || 60;
+          finalPercentage = Math.min(Math.round((currentTime / 60 / durationMinutes) * 100), 100);
+        }
+      }
+      
+      console.log(`🎬 MovieID: ${movieId}, Time: ${Math.round(currentTime)}s, Duration: ${Math.round(duration)}s, Percentage: ${finalPercentage}%`);
+      
+      updateMovieProgressUI(movieId, finalPercentage);
+    });
+    
+    console.log("✅ Hoàn tất cập nhật watch progress");
+  } catch (error) {
+    console.error("Lỗi cập nhật watch progress:", error);
+  }
+}
+
+/**
+ * Cập nhật UI progress bar cho một phim cụ thể
+ * @param {string} movieId - ID của phim
+ * @param {number} percentage - Phần trăm đã xem (0-100)
+ */
+function updateMovieProgressUI(movieId, percentage) {
+  if (!movieId || percentage <= 0) return;
+  
+  // Tìm progress bar
+  const progressBar = document.getElementById(`progress-${movieId}`);
+  if (!progressBar) return;
+  
+  const bar = progressBar.querySelector('.watch-progress-bar');
+  if (!bar) return;
+  
+  // Cập nhật width
+  bar.style.width = `${percentage}%`;
+  progressBar.style.display = 'block';
+  
+  // Thêm class has-watched
+  const movieCard = progressBar.closest('.movie-card');
+  if (movieCard) {
+    movieCard.classList.add('has-watched');
+  }
+  
+  console.log(`✅ Đã cập nhật progress UI cho ${movieId}: ${percentage}%`);
 }
