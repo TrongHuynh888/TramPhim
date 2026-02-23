@@ -103,6 +103,7 @@ function createMovieCard(movie) {
             </div>
             <div class="card-body">
                 <h4 class="card-title">${movie.title}</h4>
+                ${movie.originTitle ? `<p class="card-origin-title" style="font-size: 0.8em; color: #555; margin: 3px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; font-weight: 500;">${movie.originTitle}</p>` : ''}
                 <div class="card-meta">
                     <span>${movie.year || "2026"}</span>
                     <span class="card-rating" style="color: var(--accent-secondary); font-weight: bold;">
@@ -129,6 +130,7 @@ function createMovieCard(movie) {
                     </button>
                 </div>
                 <h3 class="popup-title-new">${movie.title} ${partHtml}</h3>
+                ${movie.originTitle ? `<p style="font-size: 0.85em; color: #555; margin: -5px 0 5px; font-style: italic; font-weight: 500;">${movie.originTitle}</p>` : ''}
                 <div class="popup-meta-row">
                     <span class="meta-match">${matchScore}% Phù hợp</span>
                     <span class="meta-age">${movie.ageLimit || "T13"}</span>
@@ -593,7 +595,7 @@ function createLandscapeMovieCard(movie) {
             </div>
             <div class="landscape-info">
                 <div class="landscape-title">${movie.title}</div>
-                <div class="landscape-subtitle">${movie.originalTitle || movie.category || ""}</div>
+                <div class="landscape-subtitle">${movie.originTitle || movie.category || ""}</div>
             </div>
 
             <!-- Popup khi rê chuột (Giao diện nâng cấp theo mẫu) -->
@@ -603,7 +605,7 @@ function createLandscapeMovieCard(movie) {
                 </div>
                 <div class="popup-body">
                     <h3 class="popup-title-main">${movie.title}</h3>
-                    <div class="popup-subtitle-orig">${movie.originalTitle || ""}</div>
+                    <div class="popup-subtitle-orig">${movie.originTitle || ""}</div>
                     
                     <div class="popup-actions" style="margin-top: 10px;">
                         <button class="btn-play-pink" onclick="event.stopPropagation(); viewMovieIntro('${movie.id}')">

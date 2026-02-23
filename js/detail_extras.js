@@ -33,8 +33,8 @@ function renderDetailVersions(episode) {
           // Logic active: Nếu label trùng preferred HOẶC (chưa có preferred và là cái đầu tiên)
           const isActive = (src.label === preferredLabel) || (!preferredLabel && sources.indexOf(src) === 0);
           
-          btn.className = `btn btn-sm ${isActive ? 'btn-danger' : 'btn-outline-secondary'} text-white`;
-          btn.style.minWidth = "80px";
+          btn.className = "btn btn-sm version-btn";
+          btn.style.cssText = `min-width: 80px; background: ${isActive ? 'var(--accent-primary, #e50914)' : '#2a2a3a'}; color: #fff; border: 2px solid ${isActive ? 'var(--accent-primary, #e50914)' : '#3a3a4a'}; border-radius: 20px; padding: 6px 16px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s;`;
           btn.textContent = src.label;
           
           btn.onclick = () => {

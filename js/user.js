@@ -271,6 +271,7 @@ async function openLibraryModal(type) {
                 
                 <div class="card-body">
                     <h4 class="card-title" title="${movie.title}">${movie.title}</h4>
+                    ${movie.originTitle ? `<p style="font-size: 0.7em; color: #999; margin: 2px 0 0; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic;">${movie.originTitle}</p>` : ''}
                     <div class="card-meta">
                         ${metaInfo}
                     </div>

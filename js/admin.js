@@ -834,6 +834,8 @@ async function fetchMovieFromAPI() {
         
         // --- 1. FILL TÊN PHIM ---
         document.getElementById("movieTitle").value = movieData.name || "";
+        // Tên tiếng Anh (origin_name từ OPhim)
+        document.getElementById("movieOriginTitle").value = movieData.origin_name || "";
         
         // --- 2. FILL HÌNH ẢNH ---
         // Domain ảnh của Ophim thường trả chung vào biến resData.data.seoOnPage.image 
@@ -1026,6 +1028,7 @@ function openMovieModal(movieId = null) {
           }
       }
       document.getElementById("movieCast").value = movie.cast || "";
+      document.getElementById("movieOriginTitle").value = movie.originTitle || "";
       
       // Xử lý Versions (Checkboxes + Custom)
       const versionsStr = movie.versions || "";
@@ -1172,6 +1175,7 @@ async function handleMovieSubmit(event) {
 
   const movieData = {
     title: document.getElementById("movieTitle").value,
+    originTitle: document.getElementById("movieOriginTitle").value || "",
     posterUrl: document.getElementById("moviePoster").value,
     // Lưu cả 2 trường để tương thích ngược
     categories: selectedCategories, 

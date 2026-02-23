@@ -81,6 +81,16 @@ async function viewMovieIntro(movieId, updateHistory = true) {
 
     // -- Info Basic
     setTextContent("introTitle", movie.title);
+    // Hiển thị tên tiếng Anh bên dưới (nếu có)
+    const introOriginEl = document.getElementById("introOriginTitle");
+    if (introOriginEl) {
+        if (movie.originTitle) {
+            introOriginEl.textContent = movie.originTitle;
+            introOriginEl.style.display = "";
+        } else {
+            introOriginEl.style.display = "none";
+        }
+    }
     setTextContent("introYear", movie.year || "2024");
     setTextContent("introDuration", movie.duration || "N/A");
     setTextContent("introAge", movie.ageLimit || "T13");
@@ -115,9 +125,8 @@ async function viewMovieIntro(movieId, updateHistory = true) {
             // Render buttons
             sources.forEach((src, index) => {
                 const btn = document.createElement("button");
-                btn.className = "btn btn-sm btn-outline-light version-btn";
-                btn.style.marginRight = "5px";
-                btn.style.marginBottom = "5px";
+                btn.className = "btn btn-sm version-btn";
+                btn.style.cssText = "margin-right: 5px; margin-bottom: 5px; background: #2a2a3a; color: #fff; border: 2px solid #3a3a4a; border-radius: 20px; padding: 6px 16px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s;";
                 btn.textContent = src.label;
                 btn.onclick = () => selectIntroVersion(src.label, index);
                 versionContainer.appendChild(btn);
@@ -226,10 +235,16 @@ function selectIntroVersion(label, index) {
     // Update UI
     const buttons = document.querySelectorAll(".version-btn");
     buttons.forEach(btn => {
-        if (btn.textContent === mapLabel) btn.classList.add("active", "btn-primary");
-        else {
-            btn.classList.remove("active", "btn-primary");
-            // btn.classList.add("btn-outline-light"); // Giữ style cũ
+        if (btn.textContent === mapLabel) {
+            btn.classList.add("active");
+            btn.style.background = "var(--accent-primary, #e50914)";
+            btn.style.borderColor = "var(--accent-primary, #e50914)";
+            btn.style.color = "#fff";
+        } else {
+            btn.classList.remove("active");
+            btn.style.background = "#2a2a3a";
+            btn.style.borderColor = "#3a3a4a";
+            btn.style.color = "#fff";
         }
     });
     

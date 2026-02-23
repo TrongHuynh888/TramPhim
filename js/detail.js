@@ -265,6 +265,18 @@ async function viewMovieDetail(movieId, updateHistory = true) {
   // Các phần tử cũ (vẫn giữ để tránh lỗi nếu có code khác dùng)
   if (document.getElementById("detailPoster")) document.getElementById("detailPoster").src = movie.posterUrl;
   if (document.getElementById("detailTitle")) document.getElementById("detailTitle").textContent = movie.title;
+  // Cập nhật tên phim lên top bar player
+  setTimeout(() => updatePlayerTopBar(), 100);
+  // Hiển thị tên tiếng Anh nhỏ bên dưới (nếu có)
+  const detailOriginEl = document.getElementById("detailOriginTitle");
+  if (detailOriginEl) {
+    if (movie.originTitle) {
+      detailOriginEl.textContent = movie.originTitle;
+      detailOriginEl.style.display = "";
+    } else {
+      detailOriginEl.style.display = "none";
+    }
+  }
   if (document.getElementById("detailYear")) document.getElementById("detailYear").textContent = movie.year || "N/A";
   if (document.getElementById("detailCountry")) document.getElementById("detailCountry").textContent = movie.country || "N/A";
   if (document.getElementById("detailCategory")) {
@@ -706,19 +718,7 @@ async function togglePiP() {
     }
 }
 
-/**
- * Bật/Tắt Toàn màn hình
- */
-function toggleFullscreen() {
-    const container = document.getElementById("videoContainer");
-    if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-        });
-    } else {
-        document.exitFullscreen();
-    }
-}
+// toggleFullscreen() - Đã gỡ bản cũ, dùng window.toggleFullscreen ở dòng dưới
 
 // --- QUẢN LÝ ALBUM ---
 
@@ -1229,6 +1229,9 @@ function selectEpisode(index) {
 
   // Update video if unlocked
   checkAndUpdateVideoAccess();
+  
+  // Cập nhật top bar player với tập mới
+  updatePlayerTopBar();
 }
 
 /**
@@ -1736,6 +1739,10 @@ function initCustomControls(video) {
             return;
         }
         
+        // Hiện controls và đặt timer ẩn sau 5s (cho cả PC và Mobile)
+        showControls();
+        resetHideTimer();
+        
         if (!isControlBtn && !isSettingsMenu && !isProgressContainer) {
             console.log("Calling togglePlay from container click");
             if (typeof togglePlay === 'function') togglePlay();
@@ -1743,11 +1750,29 @@ function initCustomControls(video) {
         }
     });
     
+    // Touch listener cho Mobile - hiện controls khi chạm, ẩn sau 5s
+    container.addEventListener("touchstart", (e) => {
+        // Không xử lý nếu chạm vào nút điều khiển
+        const isControlArea = e.target.closest('.control-btn') || 
+                              e.target.closest('.settings-menu') || 
+                              e.target.closest('.video-progress-container') ||
+                              e.target.closest('.center-btn');
+        if (isControlArea) return;
+        
+        showControls();
+        resetHideTimer();
+    }, { passive: true });
+    
     // Save progress when leaving page (IMMEDIATE - không debounce)
     window.addEventListener("beforeunload", () => {
         if (currentMovieId && video.duration > 0 && video.currentTime > 0) {
             saveWatchProgressImmediate(currentMovieId, currentEpisode, video.currentTime, video.duration);
         }
+    });
+    
+    // Khi video bắt đầu play → khởi tạo timer ẩn controls ngay
+    video.addEventListener("play", () => {
+        resetHideTimer();
     });
     
     // Set initial state
@@ -1757,19 +1782,32 @@ function initCustomControls(video) {
 
 function showControls() {
     const controls = document.getElementById("customControls");
+    const centerOverlay = document.getElementById("centerOverlay");
+    const topBar = document.getElementById("playerTopBar");
     if(controls) controls.classList.add("show");
-    document.getElementById("videoContainer").style.cursor = "default";
+    if(centerOverlay) centerOverlay.style.opacity = "1";
+    if(topBar) topBar.classList.add("show");
+    const container = document.getElementById("videoContainer");
+    if(container) container.style.cursor = "default";
 }
 
 function hideControls() {
     const controls = document.getElementById("customControls");
-    // Không ẩn nếu đang hover vào controls hoặc settings menu đang mở
+    const centerOverlay = document.getElementById("centerOverlay");
+    const topBar = document.getElementById("playerTopBar");
+    // Không ẩn nếu settings menu đang mở hoặc episode panel đang mở
     const settingsMenu = document.getElementById("settingsMenu");
+    const episodePanel = document.getElementById("playerEpisodePanel");
     
-    // Logic mới: Chỉ ẩn bottom bar, center overlay follow theo Play State & Hover (CSS handled)
+    if (episodePanel && episodePanel.classList.contains('open')) return;
+    
+    // Logic: Ẩn bottom bar + center overlay + top bar cùng lúc
     if (controls && (!settingsMenu || settingsMenu.style.display === 'none')) {
         controls.classList.remove("show");
-        document.getElementById("videoContainer").style.cursor = "none";
+        if (centerOverlay) centerOverlay.style.opacity = "0";
+        if (topBar) topBar.classList.remove("show");
+        const container = document.getElementById("videoContainer");
+        if(container) container.style.cursor = "none";
     }
 }
 
@@ -1777,7 +1815,7 @@ function resetHideTimer() {
     clearTimeout(hideControlsTimeout);
     hideControlsTimeout = setTimeout(() => {
         if (videoEl && !videoEl.paused) hideControls();
-    }, 3000);
+    }, 5000); // Ẩn sau 5 giây
 }
 
 function formatTime(seconds) {
@@ -2123,65 +2161,61 @@ window.togglePiP = async function() {
     }
 };
 
+/**
+ * Bật/Tắt Toàn màn hình (Hỗ trợ cả PC, Mobile, Tablet)
+ * Dùng Fullscreen API chuẩn + webkit fallback cho Safari
+ */
 window.toggleFullscreen = function() {
     const container = document.getElementById("videoContainer");
     const icon = document.querySelector("#fullscreenBtn i");
-    const customControls = document.getElementById("customControls");
-    const centerOverlay = document.getElementById("centerOverlay");
-    
-    // Kiểm tra xem có đang ở chế độ "CSS fullscreen" (landscape mode) không
-    const isLandscapeMode = container && container.classList.contains("landscape-mode");
-    
-    // Nếu đang ở landscape mode - chỉ cần thoát ra (như bình thường)
-    if (isLandscapeMode) {
-        // Đánh dấu người dùng đã thoát thủ công
-        userHasExitedLandscape = true;
-        
-        // Thoát khỏi chế độ landscape fullscreen CSS
-        container.classList.remove("landscape-mode");
-        
-        // Reset styles về như chế độ portrait
-        container.style.position = "";
-        container.style.width = "";
-        container.style.height = "";
-        container.style.top = "";
-        container.style.left = "";
-        container.style.zIndex = "";
-        container.style.paddingTop = "";
-        
-        // Reset controls
-        if (customControls) {
-            customControls.classList.remove("show");
-            customControls.style.opacity = "";
+    if (!container) return;
+
+    // Kiểm tra đang fullscreen chưa (cả chuẩn lẫn webkit)
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+
+    if (!isFullscreen) {
+        // Vào fullscreen
+        try {
+            if (container.requestFullscreen) {
+                container.requestFullscreen().catch(err => {
+                    console.warn("Fullscreen API error:", err.message);
+                    showNotification("Không thể bật toàn màn hình!", "error");
+                });
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            }
+            if (icon) icon.className = "fas fa-compress";
+        } catch (err) {
+            console.error("Fullscreen error:", err);
         }
-        if (centerOverlay) {
-            centerOverlay.style.opacity = "";
-        }
-        
-        // Cập nhật icon
-        if (icon) icon.className = "fas fa-expand";
-        
-        // Cũng thoát khỏi browser fullscreen nếu đang bật
-        if (document.fullscreenElement) {
-            document.exitFullscreen().catch(e => console.log("Exit fullscreen error:", e));
-        } else if (document.webkitFullscreenElement) {
-            document.webkitExitFullscreen();
-        }
-        
-        return;
-    }
-    
-    // Chế độ bình thường (portrait) - sử dụng browser Fullscreen API
-    if (!document.fullscreenElement) {
-        if (container.requestFullscreen) container.requestFullscreen();
-        else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-        if(icon) icon.className = "fas fa-compress";
     } else {
-        if (document.exitFullscreen) document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        if(icon) icon.className = "fas fa-expand";
+        // Thoát fullscreen
+        try {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(e => console.log("Exit fullscreen:", e));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+            if (icon) icon.className = "fas fa-expand";
+        } catch (err) {
+            console.error("Exit fullscreen error:", err);
+        }
     }
 };
+
+// Lắng nghe sự kiện fullscreenchange để đồng bộ icon
+document.addEventListener("fullscreenchange", function() {
+    const icon = document.querySelector("#fullscreenBtn i");
+    if (icon) {
+        icon.className = document.fullscreenElement ? "fas fa-compress" : "fas fa-expand";
+    }
+});
+document.addEventListener("webkitfullscreenchange", function() {
+    const icon = document.querySelector("#fullscreenBtn i");
+    if (icon) {
+        icon.className = document.webkitFullscreenElement ? "fas fa-compress" : "fas fa-expand";
+    }
+});
 
 /**
  * Cập nhật lượt xem
@@ -3360,6 +3394,115 @@ let functionYouTubeMessageHandler = function(event) {
 };
 
 // ============================================
+// PLAYER TOP BAR & EPISODE PANEL
+// ============================================
+
+/**
+ * Cập nhật thông tin phim trên Top Bar (tên + tập)
+ */
+function updatePlayerTopBar() {
+    const titleEl = document.getElementById("topBarTitle");
+    const episodeEl = document.getElementById("topBarEpisode");
+    const episodeBtn = document.getElementById("episodeListBtn");
+    
+    if (!titleEl) return;
+    
+    // Lấy tên phim từ detailTitle nếu có
+    const detailTitleEl = document.getElementById("detailTitle");
+    if (detailTitleEl) {
+        titleEl.textContent = detailTitleEl.textContent || "Đang tải...";
+    }
+    
+    // Xác định tập hiện tại
+    if (typeof currentEpisode !== 'undefined' && currentEpisode !== null) {
+        const epIndex = parseInt(currentEpisode);
+        // Kiểm tra có phải phim bộ không
+        const movieData = (typeof allMovies !== 'undefined') ? allMovies.find(m => m.id === currentMovieId) : null;
+        if (movieData && movieData.type === 'series') {
+            episodeEl.textContent = `Tập ${epIndex + 1}`;
+            if (episodeBtn) episodeBtn.style.display = 'flex';
+        } else {
+            episodeEl.textContent = 'Phim lẻ';
+            if (episodeBtn) episodeBtn.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Render danh sách tập vào Episode Panel
+ */
+function renderEpisodePanel() {
+    const panelList = document.getElementById("episodePanelList");
+    if (!panelList) return;
+    
+    panelList.innerHTML = '';
+    
+    // Lấy danh sách tập từ dữ liệu phim hiện tại
+    const movieData = (typeof allMovies !== 'undefined') ? allMovies.find(m => m.id === currentMovieId) : null;
+    if (!movieData || !movieData.episodes || movieData.episodes.length === 0) {
+        panelList.innerHTML = '<div style="color: rgba(255,255,255,0.5); padding: 16px; text-align: center;">Không có tập nào</div>';
+        return;
+    }
+    
+    const currentEpIndex = parseInt(currentEpisode) || 0;
+    
+    movieData.episodes.forEach((ep, index) => {
+        const item = document.createElement('div');
+        item.className = 'ep-panel-item' + (index === currentEpIndex ? ' active' : '');
+        
+        // Tên tập: Nếu có title thì dùng, không thì "Tập X"
+        const epName = ep.title || `Tập ${index + 1}`;
+        
+        item.innerHTML = `
+            <span class="ep-panel-num">${index + 1}</span>
+            <span>${epName}</span>
+        `;
+        
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Đóng panel
+            toggleEpisodePanel();
+            // Chuyển tập
+            if (typeof selectEpisode === 'function') {
+                selectEpisode(index);
+            } else if (typeof window.selectEpisode === 'function') {
+                window.selectEpisode(index);
+            }
+        });
+        
+        panelList.appendChild(item);
+    });
+    
+    // Cuộn đến tập đang xem
+    setTimeout(() => {
+        const activeItem = panelList.querySelector('.ep-panel-item.active');
+        if (activeItem) {
+            activeItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    }, 100);
+}
+
+/**
+ * Mở/Đóng Episode Panel (slide-in từ phải)
+ */
+window.toggleEpisodePanel = function() {
+    const panel = document.getElementById("playerEpisodePanel");
+    if (!panel) return;
+    
+    const isOpen = panel.classList.contains('open');
+    
+    if (isOpen) {
+        panel.classList.remove('open');
+    } else {
+        // Render danh sách tập trước khi mở
+        renderEpisodePanel();
+        panel.classList.add('open');
+        // Giữ controls hiện khi panel mở
+        showControls();
+    }
+};
+
+// ============================================
 // VIEW MOVIE FROM HISTORY (With Resume Time)
 // ============================================
 
@@ -3384,97 +3527,11 @@ window.viewMovieFromHistory = async function(movieId, episodeIndex, timeWatched)
 // ============================================
 // MOBILE LANDSCAPE FULLSCREEN HANDLING
 // ============================================
-
-// Biến để track trạng thái người dùng đã thoát thủ công chưa
+// Đã gỡ bỏ: Tính năng tự động xoay ngang bật fullscreen
+// Giữ lại biến để tránh lỗi reference
 let userHasExitedLandscape = false;
-
-/**
- * Xử lý sự kiện xoay màn hình trên mobile và tablet
- */
-function handleOrientationChange() {
-    const videoContainer = document.getElementById("videoContainer");
-    const customControls = document.getElementById("customControls");
-    const centerOverlay = document.getElementById("centerOverlay");
-    const icon = document.querySelector("#fullscreenBtn i");
-    
-    if (!videoContainer) return;
-    
-    // Kiểm tra nếu đang ở landscape mode và màn hình nhỏ (mobile + tablet)
-    const isLandscape = window.innerWidth > window.innerHeight;
-    const isMobileOrTablet = window.innerWidth <= 1024;
-    
-    if (isLandscape && isMobileOrTablet) {
-        // Chỉ vào landscape mode nếu người dùng CHƯA thoát thủ công
-        if (!videoContainer.classList.contains("landscape-mode") && !userHasExitedLandscape) {
-            videoContainer.classList.add("landscape-mode");
-            
-            // Hiển thị controls
-            if (customControls) {
-                customControls.classList.add("show");
-                customControls.style.display = "flex";
-                customControls.style.opacity = "1";
-            }
-            if (centerOverlay) {
-                centerOverlay.style.display = "flex";
-                centerOverlay.style.opacity = "1";
-            }
-            // Update icon
-            if (icon) icon.className = "fas fa-compress";
-        }
-    } else {
-        // Thoát khỏi landscape mode - reset mọi thứ
-        if (videoContainer.classList.contains("landscape-mode")) {
-            videoContainer.classList.remove("landscape-mode");
-            
-            // Reset styles
-            videoContainer.style.position = "";
-            videoContainer.style.width = "";
-            videoContainer.style.height = "";
-            videoContainer.style.top = "";
-            videoContainer.style.left = "";
-            videoContainer.style.zIndex = "";
-            
-            // Reset controls opacity (để CSS xử lý)
-            if (customControls) {
-                customControls.style.opacity = "";
-            }
-            if (centerOverlay) {
-                centerOverlay.style.opacity = "";
-            }
-            // Update icon
-            if (icon) icon.className = "fas fa-expand";
-        }
-        // Reset flag khi xoay về portrait
-        userHasExitedLandscape = false;
-    }
-}
-
-// Lắng nghe sự kiện orientation change và resize
-if (window.addEventListener) {
-    window.addEventListener("orientationchange", handleOrientationChange);
-    window.addEventListener("resize", handleOrientationChange);
-    
-    // Lắng nghe sự kiện fullscreen thay đổi (browser native fullscreen)
-    document.addEventListener("fullscreenchange", function() {
-        const icon = document.querySelector("#fullscreenBtn i");
-        if (document.fullscreenElement) {
-            if (icon) icon.className = "fas fa-compress";
-        } else {
-            if (icon) icon.className = "fas fa-expand";
-        }
-    });
-    document.addEventListener("webkitfullscreenchange", function() {
-        const icon = document.querySelector("#fullscreenBtn i");
-        if (document.webkitFullscreenElement) {
-            if (icon) icon.className = "fas fa-compress";
-        } else {
-            if (icon) icon.className = "fas fa-expand";
-        }
-    });
-    
-    // Kiểm tra ngay khi trang load
-    handleOrientationChange();
-}
+function handleOrientationChange() { /* Đã vô hiệu hóa */ }
+// Không đăng ký listener orientationchange và resize nữa
 
 /**
  * Quay lại từ trang chi tiết
@@ -3532,8 +3589,8 @@ function renderDetailVersions(episode) {
           // Logic active: Nếu label trùng preferred HOẶC (chưa có preferred và là cái đầu tiên)
           const isActive = (src.label === preferredLabel) || (!preferredLabel && sources.indexOf(src) === 0);
           
-          btn.className = `btn btn-sm ${isActive ? 'btn-danger' : 'btn-outline-secondary'} text-white`;
-          btn.style.minWidth = "80px";
+          btn.className = "btn btn-sm version-btn";
+          btn.style.cssText = `min-width: 80px; background: ${isActive ? 'var(--accent-primary, #e50914)' : '#2a2a3a'}; color: #fff; border: 2px solid ${isActive ? 'var(--accent-primary, #e50914)' : '#3a3a4a'}; border-radius: 20px; padding: 6px 16px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s;`;
           btn.textContent = src.label;
           
           btn.onclick = () => {

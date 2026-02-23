@@ -1554,11 +1554,12 @@
 }
 
 .popup-subtitle-orig {
-  font-size: 11px;
+  font-size: 14px;
   color: #ff00cc;
   margin-top: -3px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   font-weight: 500;
+  font-style: italic;
   opacity: 0.9;
 }
 
@@ -1678,7 +1679,7 @@
 }
 
 [data-theme="light"] .popup-subtitle-orig {
-  color: #666 !important;
+  color: #555 !important;
 }
 
 /* Metadata: Điểm, Giới hạn tuổi, Chất lượng... */

@@ -61,7 +61,7 @@ function renderBannerSlider() {
         <div class="banner-overlay"></div>
         <div class="banner-content">
           <h1 class="banner-title">${movie.title}</h1>
-          ${movie.originalTitle ? `<p class="banner-subtitle">${movie.originalTitle}</p>` : ''}
+          ${movie.originTitle ? `<p class="banner-subtitle">${movie.originTitle}</p>` : ''}
           <div class="banner-meta">
             ${ratingDisplay ? `<span class="banner-badge"><i class="fas fa-star"></i> ${ratingDisplay}</span>` : ''}
             <span>${movie.year || '2025'}</span>

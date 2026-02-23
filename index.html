@@ -428,21 +428,39 @@
               <iframe id="videoPlayer" class="hidden" src="" allowfullscreen></iframe>
               <video id="html5Player" class="hidden" playsinline></video>
               
+              <!-- TOP INFO BAR (Tên phim + Danh sách tập) - chỉ hiện khi fullscreen -->
+              <div class="player-top-bar" id="playerTopBar">
+                <div class="top-bar-left">
+                  <span class="top-bar-title" id="topBarTitle">Đang tải...</span>
+                  <span class="top-bar-episode" id="topBarEpisode"></span>
+                </div>
+                <div class="top-bar-right">
+                  <button class="top-bar-btn" id="episodeListBtn" onclick="toggleEpisodePanel(); event.stopPropagation();">
+                    <i class="fas fa-list-ul"></i> <span>Danh sách tập</span>
+                  </button>
+                </div>
+              </div>
+
               <!-- Center Controls -->
               <div class="center-controls-overlay" id="centerOverlay">
                 <button class="center-btn skip-btn" onclick="skipTime(-10); event.stopPropagation();">
-                  <i class="fas fa-undo-alt"></i>
+                  <svg viewBox="0 0 24 24" fill="none" class="skip-svg" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="skip-label">10</span>
                 </button>
                 <button class="center-btn play-btn-large" onclick="togglePlay(); event.stopPropagation();">
                   <i class="fas fa-play" id="centerPlayIcon"></i>
                 </button>
                 <button class="center-btn skip-btn" onclick="skipTime(10); event.stopPropagation();">
-                  <i class="fas fa-redo-alt"></i>
+                  <svg viewBox="0 0 24 24" fill="none" class="skip-svg" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><span class="skip-label">10</span>
                 </button>
               </div>
 
               <!-- CUSTOM VIDEO CONTROLS -->
               <div class="custom-video-controls hidden" id="customControls">
+                <!-- Thời gian hiện tại (góc trái) + Tổng (góc phải) - ngang hàng progress -->
+                <div class="time-row">
+                  <span class="time-current" id="currentTime">00:00</span>
+                  <span class="time-duration" id="duration">00:00</span>
+                </div>
                 <div class="progress-tooltip" id="progressTooltip">00:00</div>
                 <div class="video-progress-container" id="progressContainer">
                   <div class="video-progress-filled" id="progressBar"></div>
@@ -454,6 +472,12 @@
                     <button class="control-btn" id="playPauseBtn" onclick="togglePlay()">
                       <i class="fas fa-play"></i>
                     </button>
+                    <button class="control-btn skip-btn-small" onclick="skipTime(-10)" title="Lùi 10s">
+                      <svg viewBox="0 0 24 24" fill="none" class="skip-svg" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="skip-label">10</span>
+                    </button>
+                    <button class="control-btn skip-btn-small" onclick="skipTime(10)" title="Tới 10s">
+                      <svg viewBox="0 0 24 24" fill="none" class="skip-svg" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><span class="skip-label">10</span>
+                    </button>
                     <div class="volume-container">
                       <button class="control-btn" id="volumeBtn" onclick="toggleMute()">
                         <i class="fas fa-volume-up"></i>
@@ -461,9 +485,6 @@
                       <div class="volume-slider-wrapper">
                         <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1">
                       </div>
-                    </div>
-                    <div class="time-display">
-                      <span id="currentTime">00:00</span> / <span id="duration">00:00</span>
                     </div>
                   </div>
                   <div class="controls-right">
@@ -522,6 +543,19 @@
                       <i class="fas fa-expand"></i>
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <!-- EPISODE PANEL (Slide-in từ phải khi bấm Danh sách tập) -->
+              <div class="player-episode-panel" id="playerEpisodePanel">
+                <div class="episode-panel-header">
+                  <h4>Danh sách tập</h4>
+                  <button class="episode-panel-close" onclick="toggleEpisodePanel()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+                <div class="episode-panel-list" id="episodePanelList">
+                  <!-- JS sẽ render danh sách tập vào đây -->
                 </div>
               </div>
             </div> <!-- End video-container -->
@@ -598,6 +632,7 @@
                 <!-- Nội dung thông tin bên phải -->
                 <div class="info-content-wrapper">
                     <h1 class="info-title" id="detailTitle">...</h1>
+                    <p id="detailOriginTitle" style="font-size: 1.05em; color: #555; margin: 0 0 10px; font-style: italic; display: none; font-weight: 500;"></p>
                     <div class="info-meta">
                         <span class="meta-item year" id="detailYear">...</span>
                         <span class="meta-item country" id="detailCountry">...</span>
