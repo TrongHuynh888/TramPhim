@@ -44,7 +44,7 @@ function renderNewMovies() {
  * Render tất cả phim
  */
 function renderAllMovies(movies = null) {
-  const container = document.getElementById("allMovies");
+  const container = document.getElementById("allMoviesGrid");
   if (!container) return;
 
   const moviesToRender = movies || allMovies;
@@ -84,9 +84,6 @@ function createMovieCard(movie) {
   ) {
     isLiked = currentUser.favorites.includes(movie.id);
   }
-  const likeStyle = isLiked
-    ? "color: #e50914; border-color: #e50914;"
-    : "color: #fff; border-color: rgba(255, 255, 255, 0.2);";
   const likeIcon = isLiked ? "fas fa-heart" : "far fa-heart";
   const likeClass = isLiked ? "liked" : "";
   const fallbackImage =
@@ -117,14 +114,14 @@ function createMovieCard(movie) {
 
         <div class="movie-popup-nfx" onclick="viewMovieDetail('${movie.id}')">
             <div class="popup-header-img">
-                <img src="${movie.posterUrl}" onerror="this.onerror=null; this.src='${fallbackImage}';">
+                <img src="${movie.backgroundUrl || movie.posterUrl}" onerror="this.onerror=null; this.src='${fallbackImage}';">
             </div>
             <div class="popup-body">
                 <div class="popup-actions">
                     <button class="btn-popup-play" onclick="event.stopPropagation(); viewMovieIntro('${movie.id}')">
                         <i class="fas fa-play"></i> Xem ngay
                     </button>
-                    <button class="btn-popup-icon ${likeClass} btn-like-${movie.id}" style="${likeStyle}" onclick="event.stopPropagation(); toggleFavorite('${movie.id}')">
+                    <button class="btn-popup-icon ${likeClass} btn-like-${movie.id}" onclick="event.stopPropagation(); toggleFavorite('${movie.id}')">
                         <i class="${likeIcon}"></i>
                     </button>
                     <button class="btn-popup-icon ml-auto" onclick="event.stopPropagation(); viewMovieIntro('${movie.id}')">
@@ -140,7 +137,7 @@ function createMovieCard(movie) {
                     <span class="meta-quality">${movie.quality || "HD"}</span>
                 </div>
                 <div class="popup-genres-row">
-                    <span>${movie.category || "Phim mới"}</span>
+                    <span>${(movie.categories && movie.categories.length > 0) ? movie.categories.slice(0, 2).join(', ') + (movie.categories.length > 2 ? '...' : '') : (movie.category || "Phim mới")}</span>
                     <span class="dot">•</span>
                     <span>${movie.country || "Quốc tế"}</span>
                 </div>
@@ -200,6 +197,12 @@ function handleMovieClick(event, movieId) {
     // Mặc định: CENTER (Không cần add class gì)
 
     currentWrapper.classList.add("active-mobile");
+
+    // FIX STACKING CONTEXT: Nâng section cha lên cao nhất
+    const parentSection = currentWrapper.closest(".country-section") || currentWrapper.closest(".section");
+    if (parentSection) {
+        parentSection.classList.add("section-active-popup");
+    }
   }
 
   // Ngăn click lan ra ngoài
@@ -209,6 +212,11 @@ function handleMovieClick(event, movieId) {
 function closeAllPopups() {
   document.querySelectorAll(".movie-card-wrapper").forEach((el) => {
     el.classList.remove("active-mobile", "popup-align-left", "popup-align-right");
+  });
+  
+  // Xóa class z-index khỏi các section
+  document.querySelectorAll(".country-section, .section").forEach((sec) => {
+    sec.classList.remove("section-active-popup");
   });
 }
 
@@ -482,3 +490,147 @@ function filterByCountryFromList(countryName) {
     filterMovies();
   }
 }
+
+/**
+ * --- PHẦN PHIM THEO QUỐC GIA (LANDSCAPE 16:9) ---
+ */
+
+/**
+ * Render các phần phim theo quốc gia
+ */
+function renderCountrySections() {
+  const container = document.getElementById("countrySections");
+  if (!container || !allMovies || allMovies.length === 0) return;
+
+  // Danh sách các quốc gia cần hiển thị và từ khóa lọc
+  const sections = [
+    { id: "korea", name: "Hàn Quốc", icon: "🎎", filter: "Hàn Quốc" },
+    { id: "china", name: "Trung Quốc", icon: "🐉", filter: "Trung Quốc" },
+    { id: "usuk", name: "US-UK", icon: "🗽", filter: "Mỹ" }, // Có thể lọc theo 'Mỹ' hoặc thêm logic linh hoạt
+  ];
+
+  container.innerHTML = sections
+    .map((section) => {
+      // Lọc phim theo quốc gia
+      const filteredMovies = allMovies
+        .filter((m) => {
+          if (!m.country) return false;
+          const c = m.country.toLowerCase();
+          
+          if (section.id === "korea") {
+            return c.includes("hàn") || c.includes("korea") || c.includes("kr");
+          }
+          if (section.id === "china") {
+            return c.includes("trung") || c.includes("china") || c.includes("cn");
+          }
+          if (section.id === "usuk") {
+            return (
+              c.includes("mỹ") ||
+              c.includes("anh") ||
+              c.includes("âu") ||
+              c.includes("us") ||
+              c.includes("uk")
+            );
+          }
+          return c.includes(section.filter.toLowerCase());
+        })
+        .slice(0, 10); // Lấy tối đa 10 phim mỗi phần
+
+      if (filteredMovies.length === 0) return "";
+
+      return `
+            <section class="country-section" id="section-${section.id}">
+                <div class="sidebar-decoration">${section.icon}</div>
+                <div class="country-sidebar">
+                    <h2>Phim <span>${section.name}</span> mới</h2>
+                    <button class="btn-view-all" onclick="filterByCountryFromList('${section.filter}')">
+                        Xem toàn bộ <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="country-movies-wrapper">
+                    <div class="country-movies-row">
+                        ${filteredMovies
+                          .map((movie) => createLandscapeMovieCard(movie))
+                          .join("")}
+                    </div>
+                </div>
+            </section>
+        `;
+    })
+    .join("");
+}
+
+/**
+ * Tạo thẻ phim ngang (Landscape 16:9)
+ */
+function createLandscapeMovieCard(movie) {
+  const fallbackImage =
+    "https://placehold.co/300x169/2a2a3a/FFFFFF?text=NO+IMAGE";
+  // Ưu tiên backgroundUrl (ảnh ngang), fallback về posterUrl
+  const imageUrl = movie.backgroundUrl || movie.posterUrl || fallbackImage;
+
+  let isLiked = false;
+  if (
+    typeof currentUser !== "undefined" &&
+    currentUser &&
+    currentUser.favorites
+  ) {
+    isLiked = currentUser.favorites.includes(movie.id);
+  }
+  const likeIcon = isLiked ? "fas fa-heart" : "far fa-heart";
+  const likeClass = isLiked ? "liked" : "";
+  const matchScore = movie.rating ? Math.round(movie.rating * 10) : 95;
+
+  return `
+        <div class="movie-card-landscape movie-card-wrapper" id="movie-wrapper-ls-${movie.id}" onclick="handleMovieClick(event, '${movie.id}')">
+            <div class="landscape-img-container" style="background-image: url('${imageUrl}');">
+                <div class="landscape-badge">${movie.quality || "HD"}</div>
+                ${
+                  movie.part
+                    ? `<div class="landscape-badge" style="left: auto; right: 10px;">Phần ${movie.part}</div>`
+                    : ""
+                }
+            </div>
+            <div class="landscape-info">
+                <div class="landscape-title">${movie.title}</div>
+                <div class="landscape-subtitle">${movie.originalTitle || movie.category || ""}</div>
+            </div>
+
+            <!-- Popup khi rê chuột (Giao diện nâng cấp theo mẫu) -->
+            <div class="movie-popup-nfx">
+                <div class="popup-header-img">
+                    <img src="${imageUrl}" onerror="this.src='${fallbackImage}';">
+                </div>
+                <div class="popup-body">
+                    <h3 class="popup-title-main">${movie.title}</h3>
+                    <div class="popup-subtitle-orig">${movie.originalTitle || ""}</div>
+                    
+                    <div class="popup-actions" style="margin-top: 10px;">
+                        <button class="btn-play-pink" onclick="event.stopPropagation(); viewMovieIntro('${movie.id}')">
+                            <i class="fas fa-play"></i> Xem ngay
+                        </button>
+                        <button class="btn-action-glass ${likeClass} btn-like-${movie.id}" onclick="event.stopPropagation(); toggleFavorite('${movie.id}')">
+                            <i class="${likeIcon}"></i> Thích
+                        </button>
+                        <button class="btn-action-glass" onclick="event.stopPropagation(); viewMovieIntro('${movie.id}')">
+                             <i class="fas fa-info-circle"></i> Chi tiết
+                        </button>
+                    </div>
+
+                    <div class="meta-badges-row">
+                        <span class="badge-item imdb">IMDb ${movie.rating || "7.0"}</span>
+                        <span class="badge-item year">${movie.year || "2026"}</span>
+                        ${movie.part ? `<span class="badge-item">Phần ${movie.part}</span>` : ""}
+                        ${movie.totalEpisodes ? `<span class="badge-item">Tập ${movie.totalEpisodes}</span>` : ""}
+                        <span class="badge-item">${movie.quality || "HD"}</span>
+                    </div>
+
+                    <div class="popup-genres-text">
+                        ${(movie.categories || []).join(' <span class="dot">•</span> ')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+

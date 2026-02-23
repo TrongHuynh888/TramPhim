@@ -1,0 +1,28 @@
+<div class="section-header">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="btn-icon" onclick="showPage('home')" style="font-size: 1.1rem; padding: 0; background: none; border: none; color: inherit; cursor: pointer;">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 class="section-title" style="margin-bottom: 0;">Kho Phim Lẻ</h2>
+    </div>
+    <div class="search-filter" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <!-- Filters -->
+        <select id="filterSingleGenre" class="form-select" style="width: auto; padding: 8px; border-radius: 4px; background: #2a2a3a; color: #fff; border: 1px solid #444;" onchange="filterSingleMovies()">
+            <option value="">Tất cả Thể loại</option>
+        </select>
+        <select id="filterSingleCountry" class="form-select" style="width: auto; padding: 8px; border-radius: 4px; background: #2a2a3a; color: #fff; border: 1px solid #444;" onchange="filterSingleMovies()">
+            <option value="">Tất cả Quốc gia</option>
+        </select>
+        <select id="filterSingleYear" class="form-select" style="width: auto; padding: 8px; border-radius: 4px; background: #2a2a3a; color: #fff; border: 1px solid #444;" onchange="filterSingleMovies()">
+            <option value="">Tất cả Năm</option>
+        </select>
+
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" class="form-input" id="searchSingleMovies" placeholder="Tìm tên phim, diễn viên..." oninput="filterSingleMovies()" />
+        </div>
+    </div>
+</div>
+<div class="movie-grid" id="singleMoviesGrid">
+    <div class="text-center">Đang tải phim lẻ...</div>
+</div>

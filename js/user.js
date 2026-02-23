@@ -98,8 +98,13 @@ async function toggleFavorite(movieId) {
       btn.style.color = "#e50914";
       btn.style.borderColor = "#e50914";
       if (icon) {
-        icon.classList.remove("far"); // Tim rỗng
-        icon.classList.add("fas"); // Tim đặc
+        icon.className = "fas fa-heart"; // Đổi icon sang đầy
+      }
+      // Nếu là nút có text (như ở Intro)
+      if (btn.id === "introLikeBtn") {
+        btn.innerHTML = '<i class="fas fa-heart"></i> Đã thích';
+        btn.classList.add("btn-success");
+        btn.style.color = "#fff"; // Giữ trắng text cho đẹp trên nền xanh/đỏ
       }
     } else {
       // Đổi sang trạng thái CHƯA THÍCH (Trắng, Tim rỗng)
@@ -107,8 +112,13 @@ async function toggleFavorite(movieId) {
       btn.style.color = ""; // Về mặc định
       btn.style.borderColor = ""; // Về mặc định
       if (icon) {
-        icon.classList.remove("fas"); // Tim đặc
-        icon.classList.add("far"); // Tim rỗng
+        icon.className = "far fa-heart"; // Đổi icon sang rỗng
+      }
+      // Nếu là nút có text (như ở Intro)
+      if (btn.id === "introLikeBtn") {
+        btn.innerHTML = '<i class="far fa-heart"></i> Yêu thích';
+        btn.classList.remove("btn-success");
+        btn.style.color = "";
       }
     }
   });
@@ -358,4 +368,147 @@ function renderFavorites() {
   `,
     )
     .join("");
+}
+/**
+ * Mở Modal Album của tôi từ Profile Dropdown
+ */
+async function openMyAlbumsModal() {
+    if (!currentUser) {
+        showNotification("Vui lòng đăng nhập để xem album!", "warning");
+        openAuthModal();
+        return;
+    }
+
+    openModal("myAlbumsModal");
+    loadMyAlbums();
+}
+
+/**
+ * Tải danh sách album của người dùng và hiển thị
+ */
+async function loadMyAlbums() {
+    const container = document.getElementById("myAlbumsListContainer");
+    const moviesContainer = document.getElementById("albumMoviesContainer");
+    const header = document.getElementById("albumViewHeader");
+    const modalTitle = document.getElementById("myAlbumsModalTitle");
+
+    if (!container) return;
+
+    // Reset UI state
+    container.style.display = "block";
+    moviesContainer.style.display = "none";
+    header.style.display = "none";
+    modalTitle.textContent = "Album của tôi";
+    container.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
+
+    try {
+        const snapshot = await db.collection("users").doc(currentUser.uid).collection("albums").get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div style="text-align: center; color: #888; padding: 40px 20px;">
+                    <i class="fas fa-folder-open" style="font-size: 48px; margin-bottom: 20px; color: rgba(255,255,255,0.1); display: block;"></i>
+                    Bạn chưa có album nào.<br>Hãy tạo album trong trang chi tiết phim!
+                </div>`;
+            return;
+        }
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">';
+        snapshot.forEach(doc => {
+            const album = doc.data();
+            const movieCount = album.movies ? album.movies.length : 0;
+            // Lấy ảnh bìa là poster của phim đầu tiên nếu có
+            const coverImg = (album.movies && album.movies.length > 0) ? album.movies[0].posterUrl : 'https://placehold.co/300x450?text=Empty';
+
+            html += `
+                <div class="my-album-card" onclick="viewAlbumMovies('${doc.id}', '${album.name.replace(/'/g, "\\\'")}')" 
+                     style="background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; cursor: pointer; transition: 0.3s; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="aspect-ratio: 2/3; position: relative; overflow: hidden;">
+                        <img src="${coverImg}" style="width: 100%; height: 100%; object-fit: cover; transition: 0.5s;">
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 10px; text-align: center;">
+                            <span style="font-size: 11px; background: var(--accent-primary); padding: 2px 8px; border-radius: 10px; color: #000; font-weight: 700;">${movieCount} phim</span>
+                        </div>
+                    </div>
+                    <div style="padding: 12px; text-align: center;">
+                        <div style="font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${album.name}</div>
+                    </div>
+                </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Thêm hover effect bằng style tag nếu chưa có
+        if (!document.getElementById('album-hover-style')) {
+            const style = document.createElement('style');
+            style.id = 'album-hover-style';
+            style.innerHTML = `
+                .my-album-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.1) !important; border-color: var(--accent-primary) !important; }
+                .my-album-card:hover img { transform: scale(1.1); }
+            `;
+            document.head.appendChild(style);
+        }
+
+    } catch (error) {
+        console.error("Lỗi load album:", error);
+        container.innerHTML = '<div style="color: var(--error); text-align: center; padding: 20px;">Lỗi khi tải danh sách album.</div>';
+    }
+}
+
+/**
+ * Xem danh sách phim trong một album cụ thể
+ */
+async function viewAlbumMovies(albumId, albumName) {
+    const container = document.getElementById("myAlbumsListContainer");
+    const moviesContainer = document.getElementById("albumMoviesContainer");
+    const header = document.getElementById("albumViewHeader");
+    const albumNameEl = document.getElementById("currentAlbumName");
+
+    if (!moviesContainer) return;
+
+    container.style.display = "none";
+    moviesContainer.style.display = "block";
+    header.style.display = "flex";
+    albumNameEl.textContent = albumName;
+    moviesContainer.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
+
+    try {
+        const doc = await db.collection("users").doc(currentUser.uid).collection("albums").doc(albumId).get();
+        if (!doc.exists) return;
+
+        const albumData = doc.data();
+        const movies = albumData.movies || [];
+
+        if (movies.length === 0) {
+            moviesContainer.innerHTML = `
+                <div style="text-align: center; color: #888; padding: 40px 20px;">
+                    Album này chưa có phim nào.
+                </div>`;
+            return;
+        }
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">';
+        movies.forEach(movie => {
+            html += `
+                <div class="album-movie-item" onclick="closeModal('myAlbumsModal'); viewMovieDetail('${movie.id}')" 
+                     style="cursor: pointer; transition: 0.3s; text-align: center;">
+                    <div style="aspect-ratio: 2/3; border-radius: 8px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                        <img src="${movie.posterUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div style="font-size: 12px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;">${movie.title}</div>
+                </div>`;
+        });
+        html += '</div>';
+        moviesContainer.innerHTML = html;
+
+    } catch (error) {
+        console.error("Lỗi load phim trong album:", error);
+        moviesContainer.innerHTML = '<div style="color: var(--error); text-align: center;">Lỗi khi tải phim trong album.</div>';
+    }
+}
+
+/**
+ * Quay lại danh sách album
+ */
+function backToAlbumList() {
+    loadMyAlbums();
 }

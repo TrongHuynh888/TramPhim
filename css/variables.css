@@ -14,12 +14,16 @@
   --bg-card: rgba(26, 26, 46, 0.8);
   --bg-glass: rgba(26, 26, 46, 0.6);
 
-  /* Accent Colors */
-  --accent-primary: #e50914;
-  --accent-secondary: #00d4ff;
-  --accent-tertiary: #ff00ff;
-  --accent-gradient: linear-gradient(135deg, #e50914, #ff00ff);
-  --accent-neon: linear-gradient(135deg, #00d4ff, #ff00ff);
+  /* Accent Colors (BLUE THEME - HIỆN ĐẠI & TINH TẾ) */
+  --accent-primary: #4db8ff; /* Xanh lơ nhạt (Main) */
+  --accent-secondary: #007aff; /* Xanh dương đậm (Accent) */
+  --accent-tertiary: #80d4ff; /* Xanh ngọc sáng */
+  
+  /* Gradient xanh hiện đại */
+  --accent-gradient: linear-gradient(135deg, #007aff 0%, #4db8ff 100%);
+  
+  /* Gradient Neon (Xanh nhạt -> Xanh dương) */
+  --accent-neon: linear-gradient(135deg, #4db8ff, #007aff);
 
   /* Text Colors */
   --text-primary: #ffffff;
@@ -36,8 +40,8 @@
   --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
-  --shadow-neon: 0 0 20px rgba(0, 212, 255, 0.5);
-  --shadow-red: 0 0 20px rgba(229, 9, 20, 0.5);
+  --shadow-neon: 0 0 20px rgba(77, 184, 255, 0.5); /* #4db8ff */
+  --shadow-red: 0 0 20px rgba(0, 122, 255, 0.5); /* Đổi sang màu xanh #007aff để match theme */
 
   /* Border */
   --border-color: rgba(255, 255, 255, 0.1);
@@ -81,6 +85,12 @@
   --text-secondary: #333333; /* Xám đậm (gần như đen) cho nội dung phụ */
   --text-muted: #555555; /* Xám vừa phải, không quá mờ */
 
+  /* Status Colors cho Light Mode (tối hơn để dễ đọc, tránh chói) */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
   --border-color: rgba(0, 0, 0, 0.2); /* Viền đậm hơn giúp phân tách rõ ràng */
 
   /* Shadow đậm hơn chút để tạo chiều sâu trên nền sáng */
@@ -88,5 +98,5 @@
   --shadow-md: 0 5px 15px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2);
   --shadow-neon: 0 0 15px rgba(0, 150, 255, 0.5); /* Blue highlight rõ hơn */
-  --shadow-red: 0 0 15px rgba(220, 0, 0, 0.5);
+  --shadow-red: 0 0 15px rgba(0, 122, 255, 0.5); /* Đổi sang xanh lam */
 }

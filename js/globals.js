@@ -1,7 +1,14 @@
-/**
- * GLOBAL VARIABLES
- * Khai báo biến dùng chung cho toàn bộ ứng dụng
- */
+// 0. Lưu đường dẫn gốc của ứng dụng (Dùng cho Hash Routing)
+// Đảm bảo APP_BASE_PATH luôn trỏ về file index.html hoặc root để hash không bị hỏng
+let path = window.location.pathname;
+if (path.includes('/watch/') || path.includes('/intro/')) {
+    path = path.replace(/\/watch\/.*|\/intro\/.*/, "");
+}
+// Nếu không kết thúc bằng .html và không kết thúc bằng /, thêm /
+if (!path.endsWith('.html') && !path.endsWith('/')) {
+    path += '/';
+}
+window.APP_BASE_PATH = path;
 
 // 1. Khởi tạo Firebase (Đã config bên firebase-config.js)
 let db = firebase.firestore();

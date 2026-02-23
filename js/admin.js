@@ -28,9 +28,272 @@ async function loadAdminData() {
     // Load categories and countries tables
     renderAdminCategories();
     renderAdminCountries();
+
+    // Load VIP Requests
+    await loadAdminVipRequests();
+
+    // Load Notifications (Realtime)
+    loadAdminNotifications();
+
+    // Load Scheduled Notifications (Realtime + Timer checker)
+    loadScheduledNotifications();
   } catch (error) {
     console.error("Lỗi load admin data:", error);
   }
+}
+
+/**
+ * Hàm kiểm tra thông báo VIP cũ đã bị xóa (Chuyển sang notifications.js)
+ */
+
+let allVipRequests = [];
+
+/**
+ * Load dữ liệu yêu cầu VIP
+ */
+async function loadAdminVipRequests() {
+    if(!db) return;
+    try {
+        const snapshot = await db.collection("upgrade_requests")
+            .orderBy("createdAt", "desc")
+            .get();
+            
+        // Group by userId to keep only the latest request per user
+        const latestRequestsMap = new Map();
+        snapshot.docs.forEach(doc => {
+            const data = { id: doc.id, ...doc.data() };
+            // Since we ordered by desc, the first time we see a userId, it is the latest
+            if (!latestRequestsMap.has(data.userId)) {
+                latestRequestsMap.set(data.userId, data);
+            }
+        });
+            
+        allVipRequests = Array.from(latestRequestsMap.values());
+        
+        filterAdminVipRequests();
+    } catch (err) {
+        console.error("Lỗi tải yêu cầu VIP:", err);
+    }
+}
+
+/**
+ * Lọc và sắp xếp yêu cầu VIP
+ */
+function filterAdminVipRequests() {
+    const searchEmail = document.getElementById("adminSearchVip")?.value.toLowerCase().trim() || "";
+    const startDate = document.getElementById("vipFilterStartDate")?.value;
+    const endDate = document.getElementById("vipFilterEndDate")?.value;
+    const sortOrder = document.getElementById("vipSortOrder")?.value || "desc";
+    const status = document.getElementById("vipFilterStatus")?.value || "";
+
+    let filtered = [...allVipRequests];
+
+    // Lọc theo Email
+    if (searchEmail) {
+        filtered = filtered.filter(req => req.userEmail && req.userEmail.toLowerCase().includes(searchEmail));
+    }
+
+    // Lọc theo Status
+    if (status) {
+        filtered = filtered.filter(req => req.status === status);
+    }
+
+    // Lọc theo Thời gian (Từ - Đến)
+    if (startDate) {
+        const start = new Date(startDate).setHours(0,0,0,0);
+        filtered = filtered.filter(req => {
+            const reqDate = req.createdAt?.toDate ? req.createdAt.toDate() : new Date(req.createdAt);
+            return reqDate.getTime() >= start;
+        });
+    }
+    
+    if (endDate) {
+        const end = new Date(endDate).setHours(23,59,59,999);
+        filtered = filtered.filter(req => {
+            const reqDate = req.createdAt?.toDate ? req.createdAt.toDate() : new Date(req.createdAt);
+            return reqDate.getTime() <= end;
+        });
+    }
+
+    // Sắp xếp
+    filtered.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+
+    renderAdminVipRequests(filtered);
+}
+
+/**
+ * Hiển thị bảng Yêu cầu VIP
+ */
+function renderAdminVipRequests(requests) {
+    const tbody = document.getElementById("adminVipRequestsTable");
+    if (!tbody) return;
+
+    if (requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Không có yêu cầu nào phù hợp</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = requests.map(req => {
+        const date = req.createdAt?.toDate ? req.createdAt.toDate() : new Date(req.createdAt);
+        const statusClass = req.status === "pending" ? "warning" : req.status === "approved" ? "success" : "danger";
+        const statusText = req.status === "pending" ? "Đang chờ duyệt" : req.status === "approved" ? "Đã duyệt" : "Đã từ chối";
+        
+        // Disable buttons if not pending
+        const disabledAttr = req.status !== "pending" ? "disabled" : "";
+        const opcStyle = req.status !== "pending" ? "opacity: 0.5; cursor: not-allowed;" : "";
+
+        return `
+            <tr>
+                <td><strong>${req.userEmail}</strong><br><small class="text-muted">UID: ${req.userId.substring(0,8)}...</small></td>
+                <td><span style="color: var(--warning-color); font-weight: bold; text-transform: uppercase;">${req.package}</span></td>
+                <td>${formatNumber(req.amount)}đ</td>
+                <td>
+                   <img src="${req.billImageBase64 || 'https://placehold.co/100x150'}" 
+                        style="width: 60px; height: 80px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);" 
+                        onclick="openBillViewport('${req.billImageBase64}')"
+                        title="Bấm để xem lớn" />
+                </td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>${formatDateTime(date)}</td>
+                <td style="text-align: center;">
+                    <button class="btn btn-sm btn-success" style="margin-right: 5px; ${opcStyle}" ${disabledAttr} onclick="approveVipRequest('${req.id}', '${req.userId}', '${req.package}')" title="Duyệt nâng cấp">
+                        <i class="fas fa-check"></i> Duyệt
+                    </button>
+                    <button class="btn btn-sm btn-danger" style="margin-right: 5px; ${opcStyle}" ${disabledAttr} onclick="rejectVipRequest('${req.id}')" title="Từ chối yêu cầu">
+                        <i class="fas fa-times"></i> Từ chối
+                    </button>
+                    <!-- Nút Xóa có thể click mọi lúc -->
+                    <button class="btn btn-sm" style="background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.2);" onclick="deleteVipRequest('${req.id}')" title="Xóa yêu cầu">
+                        <i class="fas fa-trash"></i> Xóa
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/**
+ * Xem ảnh Bill Lớn
+ */
+window.openBillViewport = function(base64Str) {
+    if(!base64Str) return;
+    document.getElementById("billViewportImage").src = base64Str;
+    openModal("billViewportModal");
+}
+
+/**
+ * Duyệt Yêu Cầu VIP
+ */
+window.approveVipRequest = async function(requestId, userId, packageType) {
+    if (!await customConfirm("Xác nhận duyệt cho yêu cầu VIP này? Tài khoản người dùng sẽ được nâng cấp ngay lập tức.", { title: "Duyệt VIP", type: "info", confirmText: "Duyệt" })) return;
+    
+    let durationDays = 30; // Mặc định 30 ngày
+    if (packageType !== 'lifetime') {
+        const inputDays = await customPrompt("Nhập số ngày VIP cấp cho user này (VD: 30, 90, 365, hoặc -1 cho Vĩnh Viễn):", { title: "Số ngày VIP", defaultValue: "30" });
+        if (inputDays === null) return; // Nhấn Hủy
+        durationDays = parseInt(inputDays, 10);
+        
+        // Cho phép số ngày dương hoặc -1
+        if (isNaN(durationDays) || (durationDays <= 0 && durationDays !== -1)) {
+            showNotification("Số ngày không hợp lệ!", "error");
+            return;
+        }
+
+        // Nếu admin nhập -1, coi như là gói trọn đời
+        if (durationDays === -1) {
+            packageType = 'lifetime';
+        }
+    }
+
+    try {
+        showLoading(true, "Đang xử lý nâng cấp...");
+        
+        let vipUntil = null;
+        if (packageType !== 'lifetime') {
+            vipUntil = new Date();
+            vipUntil.setDate(vipUntil.getDate() + durationDays);
+        }
+
+        // 1. Cập nhật role cho User
+        await db.collection("users").doc(userId).update({
+            isVip: true,
+            vipType: packageType, // vip hoặc lifetime
+            vipSince: firebase.firestore.FieldValue.serverTimestamp(),
+            vipExpiresAt: vipUntil ? firebase.firestore.Timestamp.fromDate(vipUntil) : null
+        });
+
+        // 2. Cập nhật trạng thái request thành approved
+        await db.collection("upgrade_requests").doc(requestId).update({
+            status: "approved",
+            processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            processedBy: currentUser.email
+        });
+
+        // 3. Gửi thông báo cho User (Chuông) - Kèm thông tin số ngày VIP
+        if (typeof sendNotification === "function") {
+            const durationText = packageType === 'lifetime' ? "Vĩnh Viễn ♾️" : `${durationDays} ngày`;
+            await sendNotification(userId, "Yêu cầu VIP đã được duyệt ✅", `Tài khoản của bạn đã được nâng cấp VIP (${durationText}). Chúc bạn có những giây phút xem phim giải trí vui vẻ!`, "vip_approved");
+        }
+
+        showNotification("Đã duyệt thành công, người dùng đã được nâng VIP!", "success");
+        await loadAdminVipRequests(); // Reload lại bảng
+        if (typeof loadAdminUsers === "function") await loadAdminUsers(); // Tự động load lại bảng Users
+    } catch (err) {
+        console.error("Lỗi duyệt VIP:", err);
+        showNotification("Lỗi khi duyệt VIP", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Từ chối Yêu Cầu VIP
+ */
+window.rejectVipRequest = async function(requestId) {
+    if (!await customConfirm("Bạn có chắc chắn muốn TỪ CHỐI yêu cầu này không? Biên lai chưa hợp lệ?", { title: "Từ chối VIP", type: "danger", confirmText: "Từ chối" })) return;
+    
+    try {
+        showLoading(true, "Đang từ chối...");
+        
+        await db.collection("upgrade_requests").doc(requestId).update({
+            status: "rejected",
+            processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            processedBy: currentUser.email
+        });
+
+        showNotification("Đã từ chối yêu cầu VIP", "success");
+        await loadAdminVipRequests(); // Reload bảng
+    } catch (err) {
+        console.error("Lỗi từ chối VIP:", err);
+        showNotification("Lỗi khi từ chối", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Xóa Yêu Cầu VIP Khỏi Bảng (Xóa luôn trong Database)
+ */
+window.deleteVipRequest = async function(requestId) {
+    if (!await customConfirm("Hành động này sẽ XÓA VĨNH VIỄN yêu cầu này khỏi hệ thống. Bạn có chắc không?", { title: "Xóa yêu cầu", type: "danger", confirmText: "Xóa" })) return;
+    
+    try {
+        showLoading(true, "Đang xóa...");
+        
+        await db.collection("upgrade_requests").doc(requestId).delete();
+
+        showNotification("Đã xóa yêu cầu thành công!", "success");
+        await loadAdminVipRequests(); // Reload bảng
+    } catch (err) {
+        console.error("Lỗi xóa yêu cầu VIP:", err);
+        showNotification("Lỗi khi xóa", "error");
+    } finally {
+        showLoading(false);
+    }
 }
 
 /**
@@ -116,6 +379,193 @@ function renderRecentMovies() {
 /**
  * Load danh sách phim cho Admin
  */
+/**
+ * Tải form edit phim
+ */
+function loadEditMovieForm() {
+    const editSearchInput = document.getElementById("editMovieSearchInput");
+    const editSelect = document.getElementById("editMovieSelect");
+
+    if (editSearchInput && editSelect) {
+        // Set event listener for search input
+        editSearchInput.addEventListener("input", function() {
+            filterEditMovieDropdown(editSearchInput, editSelect);
+        });
+
+        // Tải danh sách phim vào Select
+        const moviesToLoad = allMovies;
+        let html = '<option value="">-- Chọn Phim --</option>';
+        moviesToLoad.forEach(m => {
+            html += `<option value="${m.id}">${m.title} (${m.publishYear})</option>`;
+        });
+        editSelect.innerHTML = html;
+
+        console.log("Đã tải dữ liệu vào Form Sửa Phim (Select)", moviesToLoad.length, "phim");
+    }
+}
+
+/* ============================================
+   QUẢN LÝ BÁO LỖI (ERROR REPORTS)
+   ============================================ */
+
+let allErrorReports = []; // Mảng chứa dữ liệu error_reports realtime
+let errorReportsUnsubscribe = null;
+
+/**
+ * Load dữ liệu báo lỗi từ Firestore
+ */
+function loadErrorReports() {
+    if (!db) return;
+
+    if (errorReportsUnsubscribe) {
+        errorReportsUnsubscribe();
+    }
+
+    errorReportsUnsubscribe = db.collection("error_reports")
+        .orderBy("createdAt", "desc")
+        .onSnapshot((snapshot) => {
+            allErrorReports = [];
+            snapshot.forEach(doc => {
+                allErrorReports.push({ id: doc.id, ...doc.data() });
+            });
+            filterErrorReports(); // Render
+        }, (err) => {
+            console.error("Lỗi load error reports:", err);
+        });
+}
+
+/**
+ * Lọc và tìm kiếm
+ */
+window.filterErrorReports = function() {
+    const searchInput = document.getElementById("adminSearchError");
+    const statusSelect = document.getElementById("errorFilterStatus");
+    const typeSelect = document.getElementById("errorFilterType"); // Tùy chọn mới
+
+    const searchText = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const statusVal = statusSelect ? statusSelect.value : "";
+    const typeVal = typeSelect ? typeSelect.value : "";
+
+    let filtered = allErrorReports;
+
+    if (statusVal) {
+        filtered = filtered.filter(item => item.status === statusVal);
+    }
+    
+    if (typeVal) {
+        filtered = filtered.filter(item => item.errorType === typeVal);
+    }
+
+    if (searchText) {
+        filtered = filtered.filter(item => {
+            const mTitle = (item.movieTitle || "").toLowerCase();
+            const epName = (item.episodeName || "").toLowerCase();
+            const uName = (item.userName || "").toLowerCase();
+            return mTitle.includes(searchText) || epName.includes(searchText) || uName.includes(searchText);
+        });
+    }
+
+    renderErrorReports(filtered);
+};
+
+/**
+ * Render bảng
+ */
+function renderErrorReports(list) {
+    const tbody = document.getElementById("errorReportsTable");
+    if (!tbody) return;
+
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 20px; color: #888;">Không có báo lỗi nào.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = list.map(item => {
+        const timeStr = item.createdAt && item.createdAt.toDate 
+            ? item.createdAt.toDate().toLocaleString('vi-VN') 
+            : "—";
+            
+        const isResolved = item.status === "resolved";
+        const statusHtml = isResolved 
+            ? '<span style="color: #4ade80; font-weight: bold;"><i class="fas fa-check-circle"></i> Đã xử lý</span>' 
+            : '<span style="color: #f87171; font-weight: bold;"><i class="fas fa-exclamation-circle"></i> Chưa xử lý</span>';
+            
+        // Map label hiển thị Badge trên Admin với màu sắc tường minh
+        const typeLabels = {
+            "load_slow": { label: "Video giật lag", bg: "#ff9800", text: "#fff" },
+            "broken_link": { label: "Hỏng link", bg: "#f44336", text: "#fff" },
+            "subtitle_error": { label: "Lỗi phụ đề", bg: "#2196f3", text: "#fff" },
+            "audio_error": { label: "Lỗi âm thanh", bg: "#9c27b0", text: "#fff" },
+            "wrong_movie": { label: "Sai phim/Tập", bg: "#4caf50", text: "#fff" },
+            "other": { label: "Khác", bg: "#607d8b", text: "#fff" }
+        };
+        const typeBadge = typeLabels[item.errorType] || typeLabels["other"];
+            
+        return `
+            <tr style="${isResolved ? 'opacity: 0.7;' : ''}">
+                <td>
+                    <div style="font-weight: 500;">${item.userName || "Ẩn danh"}</div>
+                    <div style="font-size: 11px; color: #888;">${(item.userId || "").substring(0,8)}...</div>
+                </td>
+                <td>
+                    <div style="font-weight: 500; color: #4db8ff;">${item.movieTitle || "—"}</div>
+                    <div style="font-size: 12px; color: #aaa;">${item.episodeName || "Phim lẻ"}</div>
+                </td>
+                <td>
+                    <span style="font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; display: inline-block; background-color: ${typeBadge.bg}; color: ${typeBadge.text}; font-weight: bold; white-space: nowrap;">${typeBadge.label}</span>
+                </td>
+                <td style="max-width: 250px; white-space: pre-wrap; word-break: break-word;">
+                    ${item.description || "—"}
+                </td>
+                <td style="font-size: 0.9rem;">${timeStr}</td>
+                <td>${statusHtml}</td>
+                <td style="text-align: center;">
+                    ${!isResolved ? `
+                        <button class="btn btn-sm btn-success" onclick="resolveErrorReport('${item.id}')" title="Đánh dấu đã xử lý" style="margin-right: 4px;">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-danger" onclick="deleteErrorReport('${item.id}')" title="Xóa">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+/**
+ * Đánh dấu báo lỗi là Đã Xử Lý
+ */
+window.resolveErrorReport = async function(id) {
+    if (!await customConfirm("Đánh dấu lỗi này là đã giải quyết?", { title: "Xử lý lỗi", type: "info", confirmText: "Đồng ý" })) return;
+
+    try {
+        await db.collection("error_reports").doc(id).update({
+            status: "resolved",
+            resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showNotification("Đã cập nhật trạng thái!", "success");
+    } catch (err) {
+        console.error(err);
+        showNotification("Lỗi cập nhật!", "error");
+    }
+};
+
+/**
+ * Xóa báo lỗi
+ */
+window.deleteErrorReport = async function(id) {
+    if (!await customConfirm("Bạn có chắc muốn xóa vĩnh viễn báo lỗi này?", { title: "Xóa báo lỗi", type: "danger", confirmText: "Xóa" })) return;
+
+    try {
+        await db.collection("error_reports").doc(id).delete();
+        showNotification("Đã xóa báo lỗi!", "success");
+    } catch (err) {
+        console.error(err);
+        showNotification("Lỗi xóa!", "error");
+    }
+};
 /**
  * Lọc danh sách phim (Admin)
  */
@@ -258,6 +708,41 @@ async function loadAdminMovies() {
     console.error("Lỗi load admin movies:", error);
   }
 }
+
+/**
+ * Helper: Parse chuỗi thời lượng (VD: "1 giờ 30 phút" hoặc "120 phút") thành {h, m}
+ */
+function parseDuration(str) {
+    let hours = 0;
+    let minutes = 0;
+    
+    if (!str) return { h: 0, m: 0 };
+    
+    // Regex tìm giờ và phút
+    const hourMatch = str.match(/(\d+)\s*giờ/i);
+    const minuteMatch = str.match(/(\d+)\s*phút/i);
+    
+    if (hourMatch) hours = parseInt(hourMatch[1]);
+    if (minuteMatch) minutes = parseInt(minuteMatch[1]);
+    
+    // Nếu không có cả 2 mà chỉ có số (trường hợp dữ liệu cũ thô)
+    if (!hourMatch && !minuteMatch) {
+        const onlyNum = str.match(/(\d+)/);
+        if (onlyNum) minutes = parseInt(onlyNum[1]);
+    }
+    
+    return { h: hours, m: minutes };
+}
+
+/**
+ * Helper: Format {h, m} thành chuỗi "X giờ Y phút"
+ */
+function formatDuration(h, m) {
+    let result = [];
+    if (h > 0) result.push(`${h} giờ`);
+    if (m > 0) result.push(`${m} phút`);
+    return result.join(" ") || "";
+}
 /**
  * Mở modal thêm/sửa phim
  */
@@ -321,6 +806,140 @@ function toggleMoviePrice(type) {
 }
 
 /**
+ * [NEW] FETCH THÔNG TIN PHIM TỪ OPHIM BẰNG LINK API
+ */
+async function fetchMovieFromAPI() {
+    const urlInput = document.getElementById("apiCloneUrl");
+    const url = urlInput ? urlInput.value.trim() : "";
+    if (!url) {
+        showNotification("Vui lòng dán link API OPhim vào ô trống!", "error");
+        return;
+    }
+
+    try {
+        showLoading(true, "Đang tải dữ liệu phim từ OPhim...");
+        
+        let response = await fetch(url);
+        // Kiểm tra Status
+        if (!response.ok) {
+            throw new Error(`Mã lỗi mạng: ${response.status}`);
+        }
+
+        const resData = await response.json();
+        if (!resData || !resData.data || !resData.data.item) {
+             throw new Error("Dữ liệu API không đúng chuẩn hoặc phim không tồn tại!");
+        }
+
+        const movieData = resData.data.item;
+        
+        // --- 1. FILL TÊN PHIM ---
+        document.getElementById("movieTitle").value = movieData.name || "";
+        
+        // --- 2. FILL HÌNH ẢNH ---
+        // Domain ảnh của Ophim thường trả chung vào biến resData.data.seoOnPage.image 
+        // hoặc APP_DOMAIN_CDN_IMAGE + thumb_url
+        let cdnDomain = resData.data.APP_DOMAIN_CDN_IMAGE;
+        if (!cdnDomain) cdnDomain = "https://img.ophim.live/uploads/movies"; // Fallback URL
+        
+        const thumbUrl = movieData.thumb_url.startsWith("http") ? movieData.thumb_url : `${cdnDomain}/${movieData.thumb_url}`;
+        const posterUrl = movieData.poster_url.startsWith("http") ? movieData.poster_url : `${cdnDomain}/${movieData.poster_url}`;
+
+        document.getElementById("moviePoster").value = thumbUrl;
+        document.getElementById("movieBackground").value = posterUrl;
+        
+        // Gán preview luôn cho sinh động
+        const pPreview = document.getElementById('posterPreview');
+        if (pPreview) { pPreview.querySelector('img').src = thumbUrl; pPreview.style.display = "block"; }
+        
+        const bPreview = document.getElementById('bgPreview');
+        if (bPreview) { bPreview.querySelector('img').src = posterUrl; bPreview.style.display = "block"; }
+
+        // --- 3. FILL MÔ TẢ & CHẤT LƯỢNG ---
+        let contentDesc = movieData.content || "";
+        // Content ophim trả về thường bọc thẻ <p>. Xóa mã html đi cho đẹp:
+        contentDesc = contentDesc.replace(/<[^>]*>?/gm, ''); 
+        document.getElementById("movieDescription").value = contentDesc;
+        
+        // Chất lượng
+        const qualityStr = (movieData.quality || "").toUpperCase();
+        if (["HD", "FHD", "2K", "4K", "SD"].includes(qualityStr)) {
+             document.getElementById("movieQuality").value = qualityStr;
+        } else if (qualityStr.includes("1080")) {
+             document.getElementById("movieQuality").value = "FHD";
+        }
+
+        // Năm phát hành, thời lượng
+        if (movieData.year) document.getElementById("movieYear").value = movieData.year;
+        
+        // Bóc số phút
+        const timeStr = movieData.time || ""; 
+        const matchTime = timeStr.match(/(\d+)\s*(phút|Phút|min)/);
+        if (matchTime) {
+            document.getElementById("movieDurationMinute").value = matchTime[1];
+        }
+
+        // --- 4. MAP THỂ LOẠI (CATEGORIES) ---
+        // Tick chọn tự động các thể loại giống OPhim
+        if (movieData.category && Array.isArray(movieData.category)) {
+            const opCategories = movieData.category.map(c => c.name.toLowerCase());
+            const checkboxes = document.querySelectorAll('input[name="movieCategoryCheckbox"]');
+            
+            checkboxes.forEach(cb => {
+                cb.checked = false; // Reset
+                const catName = cb.value.toLowerCase();
+                // Check nếu tên thể loại OPhim chứa tên thể loại Web (VD: Tình Cảm Lãng Mạn -> "Tình Cảm")
+                const isMatch = opCategories.some(opCat => opCat.includes(catName) || catName.includes(opCat));
+                if (isMatch) cb.checked = true;
+            });
+        }
+
+        // --- 5. MAP QUỐC GIA ---
+        if (movieData.country && Array.isArray(movieData.country) && movieData.country.length > 0) {
+            const opCountry = movieData.country[0].name.toLowerCase();
+            const countrySelect = document.getElementById("movieCountry");
+            for (let i = 0; i < countrySelect.options.length; i++) {
+                const optionText = countrySelect.options[i].text.toLowerCase();
+                if (opCountry.includes(optionText) || optionText.includes(opCountry)) {
+                    countrySelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // --- 6. KIỂU PHIM BỘ HAY PHIM LẺ ---
+        if (movieData.type === "series") {
+            document.getElementById("movieType").value = "series";
+        } else {
+            document.getElementById("movieType").value = "single";
+        }
+        
+        // --- 7. TẠO TỰ ĐỘNG DANH SÁCH TẬP PHIM SERVER DATA (Trick Save API) ---
+        if (movieData.episodes && movieData.episodes.length > 0) {
+            const svData = movieData.episodes[0].server_data;
+            if (svData && svData.length > 0) {
+                // Lưu tạm mảng tập phim OPhim vào Input Ẩn để Admin bấm lưu nó tự save theo!
+                // Do Admin form chưa hỗ trợ Save Episdoes cùng lúc với Create Movie. 
+                // Tốt nhất là hiện Alert nhắc Admin lấy List Link M3U8 để thêm sau
+                
+                showNotification(`Đã tự động điền Form! Phim này có ${svData.length} tập. Vui lòng bấm LƯU để tạo phim trước, sau đó chép Link thủ công sang nút THÊM TẬP!`, "success", 8000);
+                
+                // Lưu tạm list server_data raw vào bộ nhớ window cho phép copy paste nếu cần
+                window.tempOphimEpisodes = svData; 
+                console.log("📺[OPhim] Dữ liệu tập:", svData);
+            }
+        } else {
+             showNotification("Tải dữ liệu thông tin phim thành công!", "success");
+        }
+        
+    } catch (err) {
+        console.error("Lỗi Fetch Data OPhim:", err);
+        showNotification("Lỗi gọi API: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
  * Mở modal thêm/sửa phim
  */
 function openMovieModal(movieId = null) {
@@ -329,15 +948,20 @@ function openMovieModal(movieId = null) {
   const form = document.getElementById("movieForm");
 
   // Populate category and country selects
-  const categorySelect = document.getElementById("movieCategory");
-  const countrySelect = document.getElementById("movieCountry");
-
-  categorySelect.innerHTML =
-    '<option value="">Chọn thể loại</option>' +
-    allCategories
-      .map((c) => `<option value="${c.name}">${c.name}</option>`)
+  // Populate category checkboxes
+  const categoryContainer = document.getElementById("movieCategoryContainer");
+  categoryContainer.innerHTML = allCategories
+      .map((c) => `
+        <div class="checkbox-item" style="margin-bottom: 5px;">
+            <label style="cursor: pointer; display: flex; align-items: center;">
+                <input type="checkbox" name="movieCategoryCheckbox" value="${c.name}" style="margin-right: 8px;">
+                ${c.name}
+            </label>
+        </div>
+      `)
       .join("");
 
+  const countrySelect = document.getElementById("movieCountry");
   countrySelect.innerHTML =
     '<option value="">Chọn quốc gia</option>' +
     allCountries
@@ -382,15 +1006,68 @@ function openMovieModal(movieId = null) {
       updateMoviePartUI(); // Cập nhật UI ẩn hiện
 
       document.getElementById("moviePoster").value = movie.posterUrl;
+      // Cập nhật preview cho poster
+      if (movie.posterUrl) {
+          const posterPreview = document.getElementById('posterPreview');
+          if (posterPreview) {
+              posterPreview.querySelector('img').src = movie.posterUrl;
+              posterPreview.style.display = "block";
+          }
+      }
+
       // New fields
       document.getElementById("movieBackground").value = movie.backgroundUrl || "";
+      // Cập nhật preview cho background
+      if (movie.backgroundUrl) {
+          const bgPreview = document.getElementById('bgPreview');
+          if (bgPreview) {
+              bgPreview.querySelector('img').src = movie.backgroundUrl;
+              bgPreview.style.display = "block";
+          }
+      }
       document.getElementById("movieCast").value = movie.cast || "";
-      document.getElementById("movieVersions").value = movie.versions || "";
-      document.getElementById("movieDuration").value = movie.duration || "";
+      
+      // Xử lý Versions (Checkboxes + Custom)
+      const versionsStr = movie.versions || "";
+      const currentVersions = versionsStr.split(",").map(v => v.trim()).filter(v => v);
+      const defaultVersions = ["Vietsub", "Thuyết minh", "Lồng tiếng"];
+      const vCheckboxes = document.querySelectorAll('input[name="movieVersionCheckbox"]');
+      let customVersions = [];
+
+      vCheckboxes.forEach(cb => {
+          if (currentVersions.includes(cb.value)) {
+              cb.checked = true;
+          } else {
+              cb.checked = false;
+          }
+      });
+
+      // Tìm các version không thuộc mặc định
+      currentVersions.forEach(v => {
+          if (!defaultVersions.includes(v)) {
+              customVersions.push(v);
+          }
+      });
+      document.getElementById("movieVersionsCustom").value = customVersions.join(", ");
+
+      // Xử lý Thời lượng (Smart Input)
+      const dur = parseDuration(movie.duration || "");
+      document.getElementById("movieDurationHour").value = dur.h || "";
+      document.getElementById("movieDurationMinute").value = dur.m || "";
+
       document.getElementById("movieAgeLimit").value = movie.ageLimit || "P";
       document.getElementById("movieQuality").value = movie.quality || "HD";
 
-      document.getElementById("movieCategory").value = movie.category || "";
+      // Xử lý Mult-Genre Checkboxes
+      const savedCategories = movie.categories || (movie.category ? [movie.category] : []);
+      const checkboxes = document.querySelectorAll('input[name="movieCategoryCheckbox"]');
+      checkboxes.forEach(cb => {
+          if (savedCategories.includes(cb.value)) {
+              cb.checked = true;
+          }
+      });
+
+      // document.getElementById("movieCategory").value = movie.category || ""; // Code cũ (đã bỏ)
       document.getElementById("movieCountry").value = movie.country || "";
       document.getElementById("movieYear").value = movie.year || "";
       document.getElementById("moviePrice").value = movie.price || 0;
@@ -416,12 +1093,31 @@ function openMovieModal(movieId = null) {
     // Add mode
     title.textContent = "Thêm Phim Mới";
     form.reset();
+    
+    // Reset previews
+    const posterPrev = document.getElementById('posterPreview');
+    const bgPrev = document.getElementById('bgPreview');
+    if (posterPrev) {
+        posterPrev.style.display = "none";
+        posterPrev.querySelector('img').src = "";
+    }
+    if (bgPrev) {
+        bgPrev.style.display = "none";
+        bgPrev.querySelector('img').src = "";
+    }
+    
+    // Reset file inputs
+    const posterInp = document.getElementById('posterInput');
+    const bgInp = document.getElementById('bgInput');
+    if (posterInp) posterInp.value = "";
+    if (bgInp) bgInp.value = "";
+
     document.getElementById("movieId").value = "";
     document.getElementById("movieYear").value = new Date().getFullYear();
     document.getElementById("movieType").value = "series";
     
-    // Mặc định Phần/Mùa: Chọn "Phần 1"
-    document.getElementById("moviePartType").value = "Phần";
+    // Mặc định Phần/Mùa: Chọn Trống
+    document.getElementById("moviePartType").value = "";
     document.getElementById("moviePartNumber").value = "1";
     document.getElementById("moviePartCustom").value = "";
     updateMoviePartUI();
@@ -429,8 +1125,18 @@ function openMovieModal(movieId = null) {
     // Reset new fields default
     document.getElementById("movieBackground").value = "";
     document.getElementById("movieCast").value = "";
-    document.getElementById("movieVersions").value = "";
-    document.getElementById("movieDuration").value = "";
+    
+    // Reset Versions mặc định Vietsub
+    const vCheckboxes = document.querySelectorAll('input[name="movieVersionCheckbox"]');
+    vCheckboxes.forEach(cb => {
+        cb.checked = (cb.value === "Vietsub");
+    });
+    document.getElementById("movieVersionsCustom").value = "";
+
+    // Reset Thời lượng
+    document.getElementById("movieDurationHour").value = "";
+    document.getElementById("movieDurationMinute").value = "";
+
     document.getElementById("movieAgeLimit").value = "P";
     document.getElementById("movieQuality").value = "HD";
 
@@ -454,10 +1160,22 @@ async function handleMovieSubmit(event) {
   }
 
   const movieId = document.getElementById("movieId").value;
+  
+  // Thu thập Categories
+  const selectedCategories = Array.from(document.querySelectorAll('input[name="movieCategoryCheckbox"]:checked'))
+                                  .map(cb => cb.value);
+  
+  if (selectedCategories.length === 0) {
+      showNotification("Vui lòng chọn ít nhất 1 thể loại!", "error");
+      return;
+  }
+
   const movieData = {
     title: document.getElementById("movieTitle").value,
     posterUrl: document.getElementById("moviePoster").value,
-    category: document.getElementById("movieCategory").value,
+    // Lưu cả 2 trường để tương thích ngược
+    categories: selectedCategories, 
+    category: selectedCategories[0], // Lấy cái đầu tiên làm chính
     country: document.getElementById("movieCountry").value,
     year: parseInt(document.getElementById("movieYear").value),
     // Logic giá vé mới
@@ -470,8 +1188,22 @@ async function handleMovieSubmit(event) {
     // New fields
     backgroundUrl: document.getElementById("movieBackground").value,
     cast: document.getElementById("movieCast").value,
-    versions: document.getElementById("movieVersions").value,
-    duration: document.getElementById("movieDuration").value,
+    
+    // Xử lý thu thập Versions
+    versions: (() => {
+        let vels = Array.from(document.querySelectorAll('input[name="movieVersionCheckbox"]:checked')).map(cb => cb.value);
+        const custom = document.getElementById("movieVersionsCustom").value.trim();
+        if (custom) vels.push(...custom.split(",").map(s => s.trim()));
+        return Array.from(new Set(vels)).join(", ");
+    })(),
+
+    // Xử lý thu thập Thời lượng
+    duration: (() => {
+        const h = parseInt(document.getElementById("movieDurationHour").value) || 0;
+        const m = parseInt(document.getElementById("movieDurationMinute").value) || 0;
+        return formatDuration(h, m);
+    })(),
+
     ageLimit: document.getElementById("movieAgeLimit").value,
     quality: document.getElementById("movieQuality").value,
 
@@ -507,6 +1239,15 @@ async function handleMovieSubmit(event) {
 
       await db.collection("movies").add(movieData);
       showNotification("Đã thêm phim mới!", "success");
+
+      // Gửi thông báo phim mới tới tất cả users (chạy nền, không block UI)
+      const movieTitle = movieData.title || "Phim không tên";
+      const movieCategory = movieData.categories ? movieData.categories.join(", ") : "";
+      sendNotificationToAllUsers(
+        "🎬 Phim mới: " + movieTitle,
+        `Trạm Phim vừa cập nhật "${movieTitle}"${movieCategory ? " - " + movieCategory : ""}. Xem ngay!`,
+        "new_movie"
+      );
     }
 
     closeModal("movieModal");
@@ -533,9 +1274,7 @@ function editMovie(movieId) {
  * Xóa phim
  */
 async function deleteMovie(movieId) {
-  if (
-    !confirm("Bạn có chắc muốn xóa phim này? Hành động này không thể hoàn tác!")
-  )
+  if (!await customConfirm("Bạn có chắc muốn xóa phim này? Hành động này không thể hoàn tác!", { title: "Xóa phim", type: "danger", confirmText: "Xóa" }))
     return;
 
   if (!db) return;
@@ -615,51 +1354,329 @@ async function loadEpisodesForMovie() {
   selectedMovieForEpisodes = movieId;
   management.classList.remove("hidden");
 
-  const movie = allMovies.find((m) => m.id === movieId);
-  const episodes = movie?.episodes || [];
+  // Fetch fresh data from Firebase to ensure episode count is correct
+  try {
+      const doc = await db.collection("movies").doc(movieId).get();
+      if (doc.exists) {
+          const freshMovie = { id: doc.id, ...doc.data() };
+          
+          // Update global allMovies
+          const index = allMovies.findIndex(m => m.id === movieId);
+          if (index !== -1) {
+              allMovies[index] = freshMovie;
+          } else {
+              allMovies.push(freshMovie);
+          }
+          
+          const episodes = freshMovie.episodes || [];
 
-  if (episodes.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="6" class="text-center">Chưa có tập nào</td></tr>';
-    return;
+          if (episodes.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="6" class="text-center">Chưa có tập nào</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = episodes
+            .map(
+              (ep, index) => `
+                <tr>
+                    <td>${ep.episodeNumber}</td>
+                    <td>${ep.youtubeId || (ep.sources ? ep.sources.length + " sources" : "N/A")}</td>
+                    <td>${ep.duration || "N/A"}</td>
+                    <td>${ep.quality || "HD"}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="editEpisode(${index})" title="Sửa">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteEpisode(${index})" title="Xóa">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `,
+            )
+            .join("");
+      }
+  } catch (error) {
+      console.error("Error loading episodes:", error);
+      showNotification("Lỗi tải danh sách tập phim", "error");
   }
-
-  tbody.innerHTML = episodes
-    .map(
-      (ep, index) => `
-        <tr>
-            <td>${ep.episodeNumber}</td>
-            <td>${ep.title || "N/A"}</td>
-            <td>${ep.youtubeId}</td>
-            <td>${ep.duration || "N/A"}</td>
-            <td>${ep.quality || "HD"}</td>
-            <td>
-                <button class="btn btn-sm btn-secondary" onclick="editEpisode(${index})" title="Sửa">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="deleteEpisode(${index})" title="Xóa">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `,
-    )
-    .join("");
 }
 /**
  * Xử lý hiển thị gợi ý khi chọn loại video
  */
 /**
+ * [NEW] Mở modal Import Nhiều Tập (API)
+ */
+function openImportEpisodesModal() {
+  const movieId = document.getElementById("selectMovieForEpisodes").value;
+  if (!movieId) {
+    showNotification("Vui lòng chọn phim trước khi thao tác!", "error");
+    return;
+  }
+  
+  document.getElementById("apiBatchEpisodesUrl").value = "";
+  clearImportBatchTable();
+  const modal = document.getElementById("importEpisodesModal");
+  if (modal) modal.classList.add("active");
+}
+
+/**
+ * [NEW] Lấy danh sách Tập từ API (Ví dụ: OPhim) hiển thị vào Bảng Preview
+ */
+async function fetchBatchEpisodesFromAPI() {
+    const url = document.getElementById("apiBatchEpisodesUrl").value.trim();
+    if (!url) {
+        showNotification("Vui lòng nhập Link API!", "error");
+        return;
+    }
+
+    const tbody = document.getElementById("previewImportTable");
+    const statusText = document.getElementById("importBatchStatus");
+    const clrBtn = document.getElementById("btnClearBatchTable");
+
+    try {
+        statusText.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...`;
+        statusText.style.color = "var(--warning-color)";
+        
+        let response = await fetch(url);
+        if (!response.ok) throw new Error("Lỗi mạng: " + response.status);
+
+        const resData = await response.json();
+        if (!resData || !resData.data || !resData.item) {
+             const fallbackItem = resData.data?.item || resData.item;
+             if (!fallbackItem) throw new Error("Dữ liệu không đúng cấu trúc Phim của OPhim.");
+             resData.data = { item: fallbackItem }; 
+        }
+
+        const movieData = resData.data.item;
+        if (!movieData.episodes || movieData.episodes.length === 0) {
+            throw new Error("Phim này chưa có tập nào được cập nhật trên API!");
+        }
+
+        const serverData = movieData.episodes[0].server_data; // OPhim Format
+        if (!serverData || serverData.length === 0) {
+            throw new Error("Không tìm thấy server_data (Link Video) hợp lệ!");
+        }
+
+        // Render lên bảng
+        tbody.innerHTML = ""; 
+        serverData.forEach((ep) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>
+                   <input type="text" class="form-input batch-ep-name" value="${ep.name || 'Tập ' + (serverData.indexOf(ep) + 1)}" placeholder="Tập..." />
+                </td>
+                <td>
+                   <select class="form-select batch-ep-hls-label" style="margin-bottom: 5px; font-size: 0.9em; padding: 4px;">
+                       <option value="Bản gốc" selected style="color: #2ecc71;">🟢 Bản gốc</option>
+                       <option value="Vietsub" style="color: #3498db;">🔵 Vietsub</option>
+                       <option value="Thuyết minh" style="color: #e67e22;">🟠 Thuyết minh</option>
+                       <option value="Lồng tiếng" style="color: #9b59b6;">🟣 Lồng tiếng</option>
+                       <option value="Dự phòng" style="color: #e74c3c;">🔴 Dự phòng</option>
+                   </select>
+                   <input type="text" class="form-input batch-ep-hls" value="${ep.link_m3u8 || ''}" placeholder="Link .m3u8..." />
+                </td>
+                <td>
+                   <select class="form-select batch-ep-embed-label" style="margin-bottom: 5px; font-size: 0.9em; padding: 4px;">
+                       <option value="Bản gốc" style="color: #2ecc71;">🟢 Bản gốc</option>
+                       <option value="Vietsub" style="color: #3498db;">🔵 Vietsub</option>
+                       <option value="Thuyết minh" style="color: #e67e22;">🟠 Thuyết minh</option>
+                       <option value="Lồng tiếng" style="color: #9b59b6;">🟣 Lồng tiếng</option>
+                       <option value="Dự phòng" selected style="color: #e74c3c;">🔴 Dự phòng</option>
+                   </select>
+                   <input type="text" class="form-input batch-ep-embed" value="${ep.link_embed || ''}" placeholder="Link Iframe (Tùy chọn)" />
+                </td>
+                <td style="text-align: center;">
+                    <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        statusText.innerHTML = `<i class="fas fa-check-circle"></i> Đã tải thành công <b>${serverData.length}</b> tập.`;
+        statusText.style.color = "var(--success-color)";
+        clrBtn.style.display = "inline-block";
+
+    } catch (err) {
+        console.error("Batch Import Fetch Error:", err);
+        statusText.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Lỗi: ${err.message}`;
+        statusText.style.color = "var(--danger-color)";
+    }
+}
+
+/**
+ * [NEW] Đổi nhãn hàng loạt cho cả cột
+ */
+function changeAllLabels(type, value) {
+    if (!value) return; // Nếu chọn dòng "-- Đổi Nhãn --" thì không làm gì
+    
+    // Xác định class name của các select dựa vào loại cột (hls hay embed)
+    const selectClass = type === 'hls' ? '.batch-ep-hls-label' : '.batch-ep-embed-label';
+    
+    // Lấy tất cả các thẻ select thuộc cột đó
+    const selectElements = document.querySelectorAll(`#previewImportTable ${selectClass}`);
+    
+    if (selectElements.length === 0) return;
+    
+    // Duyệt qua và gán giá trị mới
+    selectElements.forEach(select => {
+        select.value = value;
+    });
+    
+    // Báo nhẹ cho người dùng biết
+    showNotification(`Đã đổi đồng loạt ${selectElements.length} tập thành nhãn: ${value}`, "success");
+}
+
+/**
+ * [NEW] Xóa sạch bảng Preview
+ */
+function clearImportBatchTable() {
+    document.getElementById("previewImportTable").innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding: 30px;">Dán Link API và bấm "Lấy Danh Sách" để xem trước các tập.</td></tr>`;
+    
+    // Đặt lại luôn 2 cái Header Select All về trạng thái mặc định
+    const selectHeaders = document.querySelectorAll("#importEpisodesModal th select");
+    selectHeaders.forEach(select => select.value = "");
+    const statusText = document.getElementById("importBatchStatus");
+    statusText.innerText = "Chưa có dữ liệu...";
+    statusText.style.color = "var(--text-secondary)";
+    document.getElementById("btnClearBatchTable").style.display = "none";
+}
+
+/**
+ * [NEW] Lưu danh sách các tập từ Bảng Preview Lên Hệ Thống Database
+ */
+async function saveBatchImportedEpisodes() {
+    const movieId = selectedMovieForEpisodes || document.getElementById("selectMovieForEpisodes").value;
+    if (!movieId) {
+        showNotification("Lỗi: Không xác định được Phim đang tương tác!", "error");
+        return;
+    }
+
+    const rows = document.querySelectorAll("#previewImportTable tr");
+    if (rows.length === 0 || rows[0].querySelector("td[colspan]")) {
+        showNotification("Bảng tập phim trống! Vui lòng Lấy dữ liệu trước.", "error");
+        return;
+    }
+
+    const movie = allMovies.find(m => m.id === movieId);
+    if (!movie) return;
+
+    let targetEpisodesArray = [...(movie.episodes || [])];
+    let addedCount = 0;
+
+    // Duyệt qua từng hàng trong bảng
+    for (let row of rows) {
+        const nameInput = row.querySelector(".batch-ep-name");
+        const hlsInput = row.querySelector(".batch-ep-hls");
+        const hlsLabelInput = row.querySelector(".batch-ep-hls-label");
+        const embedInput = row.querySelector(".batch-ep-embed");
+        const embedLabelInput = row.querySelector(".batch-ep-embed-label");
+
+        if (!nameInput || !hlsInput) continue; // Bỏ qua nếu dòng không hợp lệ
+        
+        let labelName = nameInput.value.trim();
+        let m3u8Link = hlsInput.value.trim();
+        let m3u8Label = hlsLabelInput ? hlsLabelInput.value : "Bản gốc";
+        let embedLink = embedInput ? embedInput.value.trim() : "";
+        let embedLabel = embedLabelInput ? embedLabelInput.value : "Dự phòng";
+
+        if (!m3u8Link) continue; // Phải có link M3U8
+
+        // Tạo cục Source
+        const sources = [];
+        sources.push({
+            label: m3u8Label,
+            type: "hls", 
+            source: m3u8Link
+        });
+        
+        // Nếu API có embed dự phòng thì nhét vào 
+        if (embedLink) {
+             sources.push({
+                label: embedLabel, // API Tích hợp iFrame web khác
+                type: "hls", // Tạm dùng HLS 
+                source: embedLink 
+            });
+        }
+
+        // Tạo Episode Object chuẩn tương tự cách tạo 1 tập thủ công
+        const epData = {
+             episodeNumber: labelName,
+             duration: "0 giờ 45 phút", 
+             quality: "1080p",
+             sources: sources,
+             videoType: sources.length > 0 ? sources[0].type : "hls",
+             videoSource: sources.length > 0 ? sources[0].source : "",
+             youtubeId: "", // HLS không dùng youtube id
+             updatedAt: new Date()
+        };
+
+        targetEpisodesArray.push(epData);
+        addedCount++;
+    }
+
+    if (addedCount === 0) {
+        showNotification("Không có dòng dữ liệu hợp lệ nào để lưu!", "error");
+        return;
+    }
+
+    try {
+        showLoading(true, `Đang xử lý thêm ${addedCount} tập phim...`);
+        
+        // Lưu lên Firestore
+        await db.collection("movies").doc(movieId).update({
+            episodes: targetEpisodesArray,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        showNotification("Import thành công " + addedCount + " tập!", "success");
+        closeModal("importEpisodesModal");
+        
+        // Reload lại list phim trong JS
+        await loadMovies();
+        await loadAdminMovies();
+        // Load lại danh sách Episodes trên màn Quản Lý Tập UI
+        loadEpisodesForMovie();
+
+    } catch (err) {
+        console.error("Save Batch Episodes Error: ", err);
+        showNotification("Không lưu được: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
  * Thêm một dòng nhập source video
  */
-function addSourceInput(type = "youtube", source = "", label = "") {
+function addSourceInput(type = "hls", source = "", label = "") {
   const container = document.getElementById("sourceListContainer");
   const id = new Date().getTime() + Math.random().toString(36).substr(2, 9);
 
+  // Khởi tạo các nhãn mặc định
+  const standardLabels = [
+      { value: "Bản gốc", emoji: "🟢", color: "#2ecc71" },
+      { value: "Vietsub", emoji: "🔵", color: "#3498db" },
+      { value: "Thuyết minh", emoji: "🟠", color: "#e67e22" },
+      { value: "Lồng tiếng", emoji: "🟣", color: "#9b59b6" },
+      { value: "Dự phòng", emoji: "🔴", color: "#e74c3c" }
+  ];
+  let defaultLabel = label || "Bản gốc";
+  
+  let labelOptions = standardLabels.map(l => `<option value="${l.value}" ${defaultLabel === l.value ? 'selected' : ''} style="color: ${l.color};">${l.emoji} ${l.value}</option>`).join('');
+  
+  // Tránh mất Data cũ nếu Phim đang có Nhãn nào khác chuỗi Standard Mặc Định
+  if (defaultLabel && !standardLabels.some(l => l.value === defaultLabel)) {
+      labelOptions += `<option value="${defaultLabel}" selected>⚪ ${defaultLabel}</option>`;
+  }
+
   const html = `
-    <div class="source-item" id="source-${id}" style="display: grid; grid-template-columns: 100px 100px 1fr auto; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">
+    <div class="source-item" id="source-${id}" style="display: grid; grid-template-columns: 180px 100px 1fr auto; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">
         <div>
-            <input type="text" class="form-input source-label" placeholder="Nhãn (VD: Vietsub)" value="${label || "Bản gốc"}" required>
+            <select class="form-select source-label">
+                ${labelOptions}
+            </select>
         </div>
         <div>
             <select class="form-select source-type" onchange="updateSourcePlaceholder('${id}')">
@@ -723,9 +1740,27 @@ function openEpisodeModal(index = null) {
     const episode = movie?.episodes?.[index];
 
     if (episode) {
-      document.getElementById("episodeNumber").value = episode.episodeNumber;
-      document.getElementById("episodeTitle").value = episode.title || "";
-      document.getElementById("episodeDuration").value = episode.duration || "";
+      // Đổ dữ liệu vào modal
+      if (document.getElementById("episodeNumber")) {
+          document.getElementById("episodeNumber").value = episode.episodeNumber || (isSingle ? "1" : "");
+      }
+      
+      // Xử lý tự động thêm "Tập" khi nhập số
+      const epNumInput = document.getElementById("episodeNumber");
+      if (epNumInput) {
+          epNumInput.onblur = function() {
+              const val = this.value.trim();
+              if (val && !isNaN(val)) {
+                  this.value = "Tập " + val;
+              }
+          };
+      }
+      
+      // Xử lý Thời lượng (Smart Input)
+      const dur = parseDuration(episode.duration || "");
+      document.getElementById("episodeDurationHour").value = dur.h || "";
+      document.getElementById("episodeDurationMinute").value = dur.m || "";
+
       document.getElementById("episodeQuality").value = episode.quality || "1080p60";
 
       // Load Sources
@@ -747,18 +1782,56 @@ function openEpisodeModal(index = null) {
     indexInput.value = "";
 
     if (isSingle) {
-      document.getElementById("episodeNumber").value = 1;
-      document.getElementById("episodeTitle").value = "Full Movie";
+      document.getElementById("episodeNumber").value = "1";
     } else {
-      const nextEp = (movie?.episodes?.length || 0) + 1;
-      document.getElementById("episodeNumber").value = nextEp;
-      document.getElementById("episodeTitle").value = `Tập ${nextEp}`;
+      // FIX: Tìm số tập lớn nhất thay vì đếm số lượng (tránh trùng khi xóa tập giữa)
+      let maxEp = 0;
+      if (movie && movie.episodes && movie.episodes.length > 0) {
+          maxEp = Math.max(...movie.episodes.map(e => {
+              const num = parseInt(String(e.episodeNumber).replace(/\D/g, ''));
+              return isNaN(num) ? 0 : num;
+          }));
+      }
+      const nextEp = maxEp + 1;
+      document.getElementById("episodeNumber").value = "Tập " + nextEp;
+    }
+
+    // Xử lý tự động thêm "Tập" khi nhập số cho add mới
+    const epNumInput = document.getElementById("episodeNumber");
+    if (epNumInput) {
+        epNumInput.onblur = function() {
+            const val = this.value.trim();
+            if (val && !isNaN(val)) {
+                this.value = "Tập " + val;
+            }
+        };
     }
 
     document.getElementById("episodeQuality").value = "1080p60";
-    // Thêm 1 dòng trống mặc định
-    addSourceInput("youtube", "", "Bản gốc");
+    
+    // Reset Thời lượng
+    document.getElementById("episodeDurationHour").value = "";
+    document.getElementById("episodeDurationMinute").value = "";
+    
+    // Thêm 1 dòng source mặc định
+    addSourceInput("hls", "", "Bản gốc");
   }
+
+  // Define openModal locally or assume it exists globally. The user's code used openModal("episodeModal").
+  // However, earlier in the same function (line 789 in original) it used openModal.
+  // Wait, I see `const modal = new bootstrap.Modal(...)` in my previous failed attempt, but the original code uses `openModal("episodeModal")`.
+  // I should stick to the original code style or available functions.
+  // Looking at the context, line 789 is `openModal("episodeModal");`.
+  // I will just return the control to that line.
+  
+  // Actually, I am replacing lines 771-787.
+  // The original code calls `openModal("episodeModal")` at line 789.
+  // I don't need to include line 789 in my replacement if I stop before it.
+  
+  // Wait, the `addSourceInput` call at line 786 in original code was:
+  // `addSourceInput("youtube", "", "Bản gốc");`
+  // I should keep it or ensure it's called.
+
 
   openModal("episodeModal");
 }
@@ -795,18 +1868,22 @@ async function handleEpisodeSubmit(event) {
   const youtubeId = primarySource.type === "youtube" ? primarySource.source : "";
 
   const episodeData = {
-    episodeNumber: parseInt(document.getElementById("episodeNumber").value),
-    title: document.getElementById("episodeTitle").value,
-    duration: document.getElementById("episodeDuration").value,
+    episodeNumber: document.getElementById("episodeNumber").value,
+    
+    // Xử lý Thời lượng
+    duration: (() => {
+        const h = parseInt(document.getElementById("episodeDurationHour").value) || 0;
+        const m = parseInt(document.getElementById("episodeDurationMinute").value) || 0;
+        return formatDuration(h, m);
+    })(),
+
     quality: document.getElementById("episodeQuality").value,
-    
-    // Dữ liệu cũ (cho app cũ)
-    videoType: primarySource.type,
-    videoSource: primarySource.source,
-    youtubeId: youtubeId,
-    
-    // Dữ liệu mới
-    sources: sources
+    sources: sources,
+    // Giữ lại videoType/videoSource/youtubeId cho tương thích ngược (lấy từ source đầu tiên)
+    videoType: sources.length > 0 ? sources[0].type : "youtube",
+    videoSource: sources.length > 0 ? sources[0].source : "",
+    youtubeId: sources.length > 0 && sources[0].type === "youtube" ? sources[0].source : "",
+    updatedAt: new Date()
   };
 
   try {
@@ -822,7 +1899,9 @@ async function handleEpisodeSubmit(event) {
       episodes.push(episodeData);
     }
 
-    episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+    episodes.sort((a, b) => {
+        return String(a.episodeNumber).localeCompare(String(b.episodeNumber), undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     await movieRef.update({ episodes });
 
@@ -850,7 +1929,7 @@ function editEpisode(index) {
  * Xóa tập phim
  */
 async function deleteEpisode(index) {
-  if (!confirm("Bạn có chắc muốn xóa tập này?")) return;
+  if (!await customConfirm("Bạn có chắc muốn xóa tập này?", { title: "Xóa tập phim", type: "danger", confirmText: "Xóa" })) return;
 
   if (!db || !selectedMovieForEpisodes) return;
 
@@ -873,6 +1952,40 @@ async function deleteEpisode(index) {
   } catch (error) {
     console.error("Lỗi xóa episode:", error);
     showNotification("Không thể xóa tập phim!", "error");
+  } finally {
+    showLoading(false);
+  }
+}
+
+/**
+ * Xóa tất cả tập phim
+ */
+async function deleteAllEpisodes() {
+  if (!selectedMovieForEpisodes) {
+    showNotification("Vui lòng chọn một phim trước!", "warning");
+    return;
+  }
+
+  if (!await customConfirm("Bạn có chắc muốn xóa TẤT CẢ các tập của phim này? Hành động này không thể hoàn tác!", { title: "Xóa tất cả tập phim", type: "danger", confirmText: "Xóa tất cả" })) return;
+
+  if (!db) return;
+
+  try {
+    showLoading(true, "Đang xóa tất cả tập...");
+
+    const movieRef = db.collection("movies").doc(selectedMovieForEpisodes);
+    
+    // Set episodes to empty array
+    await movieRef.update({ episodes: [] });
+
+    showNotification("Đã xóa tất cả tập phim!", "success");
+
+    // Reload
+    await loadMovies();
+    loadEpisodesForMovie();
+  } catch (error) {
+    console.error("Lỗi xóa tất cả episodes:", error);
+    showNotification("Không thể xóa các tập phim!", "error");
   } finally {
     showLoading(false);
   }
@@ -1048,17 +2161,14 @@ async function toggleUserVip(userId, setVip) {
 
   if (setVip) {
     // Hướng dẫn Admin nhập -1 để set vĩnh viễn
-    const input = prompt(
-      "Nhập số ngày VIP (Ví dụ: 30).\n👉 Nhập -1 để cấp VĨNH VIỄN.",
-      "30",
-    );
+    const input = await customPrompt("Nhập số ngày VIP (Ví dụ: 30). Nhập -1 để cấp VĨNH VIỄN.", { title: "Cấp VIP", defaultValue: "30" });
 
     if (input === null) return; // Nếu bấm hủy
 
     days = parseInt(input);
 
     if (isNaN(days)) {
-      alert("Vui lòng nhập số!");
+      await customAlert("Vui lòng nhập số!", { type: "warning" });
       return;
     }
 
@@ -1072,12 +2182,12 @@ async function toggleUserVip(userId, setVip) {
       expiryDate = new Date(now.setDate(now.getDate() + days));
       message = `Đã cấp VIP ${days} ngày!`;
     } else {
-      alert("Số ngày không hợp lệ!");
+      await customAlert("Số ngày không hợp lệ!", { type: "warning" });
       return;
     }
   } else {
     // HỦY VIP
-    if (!confirm(`Bạn có chắc muốn HỦY VIP của người dùng này?`)) return;
+    if (!await customConfirm("Bạn có chắc muốn HỦY VIP của người dùng này?", { title: "Hủy VIP", type: "danger", confirmText: "Hủy VIP" })) return;
     message = "Đã hủy VIP thành công!";
   }
 
@@ -1112,7 +2222,7 @@ async function toggleUserStatus(userId, newStatus) {
   if (!db) return;
 
   const action = newStatus ? "mở khóa" : "khóa";
-  if (!confirm(`Bạn có chắc muốn ${action} tài khoản này?`)) return;
+  if (!await customConfirm(`Bạn có chắc muốn ${action} tài khoản này?`, { title: action === 'khóa' ? 'Khóa tài khoản' : 'Mở khóa', type: action === 'khóa' ? 'danger' : 'warning', confirmText: action.charAt(0).toUpperCase() + action.slice(1) })) return;
 
   try {
     showLoading(true, "Đang cập nhật...");
@@ -1136,9 +2246,9 @@ async function toggleUserStatus(userId, newStatus) {
  */
 async function deleteUser(userId, userEmail) {
   // 1. Xác nhận hành động (Vì xóa là mất luôn)
-  const confirmMsg = `⚠️ CẢNH BÁO NGUY HIỂM!\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản: ${userEmail}?\n\nHành động này sẽ xóa toàn bộ dữ liệu của người dùng này khỏi hệ thống và KHÔNG THỂ khôi phục.`;
+  const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản: ${userEmail}? Hành động này sẽ xóa toàn bộ dữ liệu và KHÔNG THỂ khôi phục.`;
 
-  if (!confirm(confirmMsg)) return; // Nếu bấm Hủy thì dừng
+  if (!await customConfirm(confirmMsg, { title: "⚠️ XÓA TÀI KHOẢN", type: "danger", confirmText: "Xóa vĩnh viễn" })) return;
 
   if (!db) return;
 
@@ -1335,7 +2445,7 @@ async function handleCategorySubmit(event) {
 
 // 4. Xử lý Xóa
 async function deleteCategory(categoryId) {
-  if (!confirm("Bạn có chắc muốn xóa thể loại này?")) return;
+  if (!await customConfirm("Bạn có chắc muốn xóa thể loại này?", { title: "Xóa thể loại", type: "danger", confirmText: "Xóa" })) return;
 
   try {
     showLoading(true, "Đang xóa...");
@@ -1478,7 +2588,7 @@ async function handleCountrySubmit(event) {
 }
 
 async function deleteCountry(countryId) {
-  if (!confirm("Bạn có chắc muốn xóa quốc gia này?")) return;
+  if (!await customConfirm("Bạn có chắc muốn xóa quốc gia này?", { title: "Xóa quốc gia", type: "danger", confirmText: "Xóa" })) return;
 
   try {
     showLoading(true, "Đang xóa...");
@@ -1614,7 +2724,7 @@ function renderAdminCommentsList(comments) {
  * Xóa bình luận Admin (Xóa dòng ngay lập tức)
  */
 async function deleteAdminComment(commentId) {
-  if (!confirm("Bạn có chắc muốn xóa bình luận này vĩnh viễn?")) return;
+  if (!await customConfirm("Bạn có chắc muốn xóa bình luận này vĩnh viễn?", { title: "Xóa bình luận", type: "danger", confirmText: "Xóa" })) return;
 
   try {
     showLoading(true, "Đang xóa...");
@@ -1706,3 +2816,708 @@ async function loadAdminTransactions() {
       '<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>';
   }
 }
+
+/**
+ * Tải ảnh lên Cloudinary và cập nhật URL vào input tương ứng
+ * @param {HTMLInputElement} input - Input file vừa chọn
+ * @param {string} targetUrlId - ID của ô input nhận URL ảnh
+ * @param {string} previewId - ID của vùng chứa ảnh xem trước
+ */
+window.uploadMovieImage = async function(input, targetUrlId, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // 1. Kiểm tra định dạng
+  if (!file.type.startsWith('image/')) {
+    showNotification("Vui lòng chọn file hình ảnh!", "error");
+    return;
+  }
+
+  // 2. Hiển thị Preview cục bộ ngay lập tức
+  const previewContainer = document.getElementById(previewId);
+  if (previewContainer) {
+    const previewImg = previewContainer.querySelector('img');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewImg.src = e.target.result;
+      previewContainer.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  try {
+    showLoading(true, "Đang tải ảnh lên Cloudinary...");
+
+    // 3. Cấu hình các thông số Cloudinary
+    const CLOUD_NAME = "drhr0h7dd";
+    const UPLOAD_PRESET = "tramphim_preset";
+    const API_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
+    formData.append("folder", "movie_assets"); // Lưu vào thư mục movie_assets trên Cloudinary
+
+    // 4. Gọi API Cloudinary với Timeout 30 giây
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Lỗi API Cloudinary");
+    }
+
+    const data = await response.json();
+    const downloadURL = data.secure_url;
+
+    // 5. Cập nhật URL vào ô input
+    const targetInput = document.getElementById(targetUrlId);
+    if (targetInput) {
+      targetInput.value = downloadURL;
+    }
+    
+    showNotification("Đã tải ảnh lên Cloudinary thành công!", "success");
+  } catch (error) {
+    console.error("Lỗi upload ảnh:", error);
+    let msg = "Lỗi khi tải ảnh lên. Hãy thử lại!";
+    
+    if (error.name === 'AbortError') {
+        msg = "Quá thời gian tải lên (30s). Vui lòng kiểm tra mạng!";
+    } else if (error.message.includes('preset')) {
+        msg = "Lỗi Preset: Hãy kiểm tra lại cấu hình Unsigned trên Cloudinary!";
+    }
+    
+    showNotification(msg, "error");
+  } finally {
+    showLoading(false);
+    input.value = ""; // Reset để có thể chọn lại cùng 1 file
+  }
+}
+
+/* ============================================
+   QUẢN LÝ THÔNG BÁO (ADMIN)
+   ============================================ */
+
+let allAdminNotifications = []; // Lưu mảng thông báo từ Firestore
+let adminNotifUnsubscribe = null; // Listener realtime
+
+/**
+ * Load danh sách tất cả thông báo từ Firestore (Realtime)
+ */
+function loadAdminNotifications() {
+    if (!db) return;
+
+    // Hủy listener cũ nếu có
+    if (adminNotifUnsubscribe) {
+        adminNotifUnsubscribe();
+    }
+
+    // Lắng nghe realtime tất cả thông báo, sắp xếp mới nhất trước
+    adminNotifUnsubscribe = db.collection("notifications")
+        .orderBy("createdAt", "desc")
+        .onSnapshot((snapshot) => {
+            allAdminNotifications = [];
+            snapshot.forEach(doc => {
+                allAdminNotifications.push({ id: doc.id, ...doc.data() });
+            });
+            filterAdminNotifications(); // Render với bộ lọc hiện tại
+        }, (error) => {
+            console.error("Lỗi load admin notifications:", error);
+        });
+}
+
+/**
+ * Lọc và render danh sách thông báo
+ */
+function filterAdminNotifications() {
+    const searchText = (document.getElementById("adminSearchNotif")?.value || "").toLowerCase().trim();
+    const filterType = document.getElementById("adminFilterNotifType")?.value || "";
+
+    let filtered = allAdminNotifications;
+
+    // Lọc theo text
+    if (searchText) {
+        filtered = filtered.filter(n =>
+            (n.title || "").toLowerCase().includes(searchText) ||
+            (n.message || "").toLowerCase().includes(searchText)
+        );
+    }
+
+    // Lọc theo loại
+    if (filterType) {
+        filtered = filtered.filter(n => n.type === filterType);
+    }
+
+    renderAdminNotifications(filtered);
+}
+
+// Mảng lưu danh sách thông báo đã gom nhóm để thao tác UI (Xóa, v.v.)
+let currentGroupedNotifications = [];
+
+/**
+ * Render bảng thông báo
+ */
+function renderAdminNotifications(notifications) {
+    const tbody = document.getElementById("adminNotificationsTable");
+    if (!tbody) return;
+
+    // Cập nhật thống kê
+    const totalEl = document.getElementById("notifStatTotal");
+    const unreadEl = document.getElementById("notifStatUnread");
+    const readEl = document.getElementById("notifStatRead");
+    const allTotal = allAdminNotifications.length;
+    const allUnread = allAdminNotifications.filter(n => !n.isRead).length;
+    if (totalEl) totalEl.textContent = allTotal;
+    if (unreadEl) unreadEl.textContent = allUnread;
+    if (readEl) readEl.textContent = allTotal - allUnread;
+
+    // GOM NHÓM THÔNG BÁO GỬI HÀNG LOẠT
+    let grouped = [];
+    notifications.forEach(n => {
+        let nTime = n.createdAt && n.createdAt.toDate ? n.createdAt.toDate().getTime() : 0;
+        
+        let foundGroup = grouped.find(g => {
+            return g.type === n.type && 
+                   g.title === n.title && 
+                   g.message === n.message &&
+                   (Math.abs(g.time - nTime) < 5 * 60 * 1000); // Các notif cách nhau tối đa 5 phút -> Cùng 1 lần gửi
+        });
+
+        if (foundGroup) {
+            foundGroup.count += 1;
+            foundGroup.readCount += n.isRead ? 1 : 0;
+            if (n.isForAdmin) foundGroup.isForAdmin = true;
+            foundGroup.ids.push(n.id);
+        } else {
+            grouped.push({
+                id: n.id, // ID đại diện
+                type: n.type,
+                title: n.title,
+                message: n.message,
+                time: nTime,
+                createdAt: n.createdAt,
+                count: 1,
+                readCount: n.isRead ? 1 : 0,
+                isForAdmin: n.isForAdmin,
+                userId: n.userId, // Cho trường hợp gửi cá nhân / hệ thống
+                ids: [n.id]
+            });
+        }
+    });
+
+    currentGroupedNotifications = grouped; // Lưu ra biến global để dùng khi click
+
+    if (grouped.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 30px; color: var(--text-muted);">Không có thông báo nào</td></tr>';
+        return;
+    }
+
+    // Map tên loại thông báo
+    const typeMap = {
+        system: { label: "🔔 Hệ thống", cls: "system" },
+        new_movie: { label: "🎬 Phim mới", cls: "new_movie" },
+        promotion: { label: "🎁 Khuyến mãi", cls: "promotion" },
+        maintenance: { label: "🔧 Bảo trì", cls: "maintenance" },
+        vip_request: { label: "⭐ VIP Request", cls: "vip_request" },
+        vip_approved: { label: "✅ VIP Approved", cls: "vip_approved" }
+    };
+
+    tbody.innerHTML = grouped.map((g, index) => {
+        // Loại thông báo
+        const typeInfo = typeMap[g.type] || { label: g.type || "Khác", cls: "system" };
+
+        // Người nhận
+        let recipientHtml = "—";
+        if (g.isForAdmin) {
+            recipientHtml = '<span style="color: #ff6b6b;">Admin</span>';
+        } else if (g.count > 1) {
+            recipientHtml = `<span style="color: #4db8ff;">Tất cả Users (${g.count})</span>`;
+        } else if (g.userId) {
+            recipientHtml = `<span style="font-size: 0.8rem; color: var(--text-muted);" title="${g.userId}">User: ${g.userId.substring(0, 8)}...</span>`;
+        }
+
+        // Trạng thái đã đọc
+        let statusHtml = "";
+        if (g.count > 1) {
+            statusHtml = `<span style="color: #51cf66; font-size: 0.85rem;">Đã đọc: ${g.readCount}/${g.count}</span>`;
+        } else {
+            statusHtml = g.readCount > 0
+                ? '<span style="color: #51cf66; font-size: 0.85rem;">Đã đọc</span>'
+                : '<span style="color: #ff6b6b; font-size: 0.85rem;">Chưa đọc</span>';
+        }
+
+        // Thời gian
+        let timeStr = "—";
+        if (g.createdAt && g.createdAt.toDate) {
+            const date = g.createdAt.toDate();
+            timeStr = date.toLocaleString('vi-VN', {
+                hour: '2-digit', minute: '2-digit',
+                day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+        }
+
+        return `
+            <tr>
+                <td><span class="notif-type-badge ${typeInfo.cls}">${typeInfo.label}</span></td>
+                <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(g.title || '').replace(/"/g, '&quot;')}">${g.title || '—'}</td>
+                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(g.message || '').replace(/"/g, '&quot;')}">${g.message || '—'}</td>
+                <td>${recipientHtml}</td>
+                <td>${statusHtml}</td>
+                <td style="white-space: nowrap; font-size: 0.85rem;">${timeStr}</td>
+                <td>
+                    ${g.isForAdmin ? '' : `
+                    <button class="btn btn-sm btn-warning" onclick="adminRecallNotification('${g.id}', '${(g.title || '').replace(/'/g, "\\'")}', '${(g.type || '')}')" title="Thu hồi từ tất cả Users" style="margin-right: 4px;">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    `}
+                    <button class="btn btn-sm btn-danger" onclick="adminDeleteNotificationGroup(${index})" title="Xóa cá nhân (Ẩn khỏi bảng)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+/**
+ * Admin gửi thông báo tùy chỉnh tới tất cả users
+ */
+async function adminSendNotifToAll() {
+    const titleInput = document.getElementById("adminNotifTitle");
+    const messageInput = document.getElementById("adminNotifMessage");
+    const typeSelect = document.getElementById("adminNotifType");
+
+    const title = titleInput?.value.trim();
+    const message = messageInput?.value.trim();
+    const type = typeSelect?.value || "system";
+
+    if (!title) {
+        showNotification("Vui lòng nhập tiêu đề thông báo!", "warning");
+        return;
+    }
+    if (!message) {
+        showNotification("Vui lòng nhập nội dung thông báo!", "warning");
+        return;
+    }
+
+    if (!await customConfirm(`Bạn có chắc muốn gửi thông báo "${title}" tới TẤT CẢ người dùng?`, { title: "Gửi thông báo", type: "info", confirmText: "Gửi" })) {
+        return;
+    }
+
+    try {
+        showLoading(true, "Đang gửi thông báo...");
+        await sendNotificationToAllUsers(title, message, type);
+        showNotification("Đã gửi thông báo tới tất cả người dùng!", "success");
+
+        // Reset form
+        if (titleInput) titleInput.value = "";
+        if (messageInput) messageInput.value = "";
+        if (typeSelect) typeSelect.value = "system";
+    } catch (err) {
+        console.error("Lỗi gửi thông báo:", err);
+        showNotification("Có lỗi xảy ra khi gửi thông báo!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Admin xóa cá nhân một nhóm thông báo (Ẩn khỏi bảng của tài khoản Admin)
+ */
+async function adminDeleteNotificationGroup(groupIndex) {
+    if (!db) return;
+
+    const group = currentGroupedNotifications[groupIndex];
+    if (!group || !group.ids || group.ids.length === 0) return;
+
+    const count = group.ids.length;
+    if (!await customConfirm(
+        `Bạn có chắc muốn XÓA vĩnh viễn ${count} thông báo thuộc nhóm "${group.title}"?\n\nHành động này chỉ xóa thông báo ĐÃ LƯU TRONG LỊCH SỬ. Tuy nhiên do đây là thông báo gửi toàn hệ thống, nó sẽ xóa cả thông báo ở phía user do cùng chung ID database. Để thu hồi chính xác, vui lòng dùng nút Thu Hồi màu vàng!`, 
+        { title: "Xóa Lịch Sử", type: "danger", confirmText: "Xóa" }
+    )) {
+        return;
+    }
+
+    try {
+        showLoading(true, `Đang xóa ${count} thông báo...`);
+
+        // Xóa theo batch
+        let batch = db.batch();
+        let deletedCount = 0;
+
+        for (const notifId of group.ids) {
+            batch.delete(db.collection("notifications").doc(notifId));
+            deletedCount++;
+            
+            if (deletedCount % 499 === 0) {
+                await batch.commit();
+                batch = db.batch();
+            }
+        }
+        await batch.commit();
+
+        showNotification(`Đã xóa ${deletedCount} thông báo!`, "success");
+        // Gọi loadAdminNotifications() để reload bảng sẽ tự động cập nhật
+    } catch (err) {
+        console.error("Lỗi xóa nhóm thông báo:", err);
+        showNotification("Không thể xóa thông báo!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Admin THU HỒI thông báo từ tất cả người dùng (dựa theo tiêu đề và loại)
+ */
+async function adminRecallNotification(notifId, title, type) {
+    if (!db || !title) return;
+
+    if (!await customConfirm(`Bạn có chắc muốn THU HỒI thông báo "${title}" từ TẤT CẢ người dùng? Hành động này sẽ xóa thông báo đó khỏi hộp thư của mọi user!`, { title: "Thu hồi thông báo", type: "warning", confirmText: "Thu hồi" })) {
+        return;
+    }
+
+    try {
+        showLoading(true, "Đang thu hồi thông báo...");
+
+        // 1. Tìm tất cả các thông báo của user có cùng title và type (không phải của admin)
+        const snapshot = await db.collection("notifications")
+            .where("isForAdmin", "==", false)
+            .where("title", "==", title)
+            .where("type", "==", type)
+            .get();
+
+        if (snapshot.empty) {
+            showNotification("Không tìm thấy thông báo nào ở phía user để thu hồi!", "info");
+            return;
+        }
+
+        // 2. Xóa hàng loạt bằng batch write
+        let batch = db.batch();
+        let count = 0;
+
+        snapshot.forEach(doc => {
+            batch.delete(doc.ref);
+            count++;
+            if (count % 499 === 0) {
+                batch.commit();
+                batch = db.batch();
+            }
+        });
+
+        await batch.commit();
+
+        showNotification(`Đã thu hồi thành công ${count} thông báo từ người dùng!`, "success");
+        
+        // Load lại danh sách thông báo admin để UI update (vd nếu admin cũng bị xóa cái notif đó)
+        if (typeof loadAdminNotifications === "function") {
+            loadAdminNotifications();
+        }
+        
+    } catch (err) {
+        console.error("Lỗi thu hồi thông báo:", err);
+        showNotification("Lỗi khi thu hồi thông báo!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Admin xóa TẤT CẢ thông báo trong hệ thống
+ */
+async function adminDeleteAllNotifications() {
+    if (!db || allAdminNotifications.length === 0) {
+        showNotification("Không có thông báo nào để xóa!", "info");
+        return;
+    }
+
+    if (!await customConfirm(`Bạn có chắc muốn xóa TẤT CẢ ${allAdminNotifications.length} thông báo? Hành động này không thể hoàn tác!`, { title: "Xóa tất cả thông báo", type: "danger", confirmText: "Xóa tất cả" })) {
+        return;
+    }
+
+    try {
+        showLoading(true, "Đang xóa thông báo...");
+
+        // Xóa theo batch (max 500/batch)
+        let batch = db.batch();
+        let count = 0;
+
+        for (const notif of allAdminNotifications) {
+            batch.delete(db.collection("notifications").doc(notif.id));
+            count++;
+            if (count % 499 === 0) {
+                await batch.commit();
+                batch = db.batch();
+            }
+        }
+        await batch.commit();
+
+        showNotification(`Đã xóa ${count} thông báo!`, "success");
+    } catch (err) {
+        console.error("Lỗi xóa tất cả thông báo:", err);
+        showNotification("Có lỗi xảy ra khi xóa!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/* ============================================
+   LẬP LỊCH GỬI THÔNG BÁO TỰ ĐỘNG
+   ============================================ */
+
+let allScheduledNotifs = []; // Danh sách lịch hẹn
+let scheduledNotifUnsubscribe = null; // Listener realtime
+
+
+/**
+ * Load danh sách lịch hẹn từ Firestore (Realtime)
+ */
+function loadScheduledNotifications() {
+    if (!db) return;
+
+    if (scheduledNotifUnsubscribe) {
+        scheduledNotifUnsubscribe();
+    }
+
+    scheduledNotifUnsubscribe = db.collection("scheduled_notifications")
+        .orderBy("scheduledAt", "asc")
+        .onSnapshot((snapshot) => {
+            allScheduledNotifs = [];
+            snapshot.forEach(doc => {
+                allScheduledNotifs.push({ id: doc.id, ...doc.data() });
+            });
+            renderScheduledNotifications();
+        }, (error) => {
+            console.error("Lỗi load scheduled notifications:", error);
+        });
+
+}
+
+/**
+ * Render bảng lịch hẹn
+ */
+function renderScheduledNotifications() {
+    const tbody = document.getElementById("adminScheduledTable");
+    if (!tbody) return;
+
+    const statTotal = document.getElementById("schedStatTotal");
+    if (statTotal) statTotal.textContent = allScheduledNotifs.length;
+
+    // Map loại thông báo
+    const typeMap = {
+        system: { label: "🔔 Hệ thống", cls: "system" },
+        new_movie: { label: "🎬 Phim mới", cls: "new_movie" },
+        promotion: { label: "🎁 Khuyến mãi", cls: "promotion" },
+        maintenance: { label: "🔧 Bảo trì", cls: "maintenance" }
+    };
+
+    // Map lặp lại
+    const repeatMap = {
+        once: "Một lần",
+        daily: "Hàng ngày",
+        weekly: "Hàng tuần",
+        monthly: "Hàng tháng"
+    };
+
+    if (allScheduledNotifs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 20px; color: var(--text-muted);">Chưa có lịch hẹn nào</td></tr>';
+        return;
+    }
+
+    const now = new Date();
+
+    tbody.innerHTML = allScheduledNotifs.map(s => {
+        const typeInfo = typeMap[s.type] || { label: s.type || "Khác", cls: "system" };
+        const repeatLabel = repeatMap[s.repeat] || s.repeat || "Một lần";
+
+        // Thời gian gửi
+        let timeStr = "—";
+        let scheduledDate = null;
+        if (s.scheduledAt && s.scheduledAt.toDate) {
+            scheduledDate = s.scheduledAt.toDate();
+            timeStr = scheduledDate.toLocaleString('vi-VN', {
+                hour: '2-digit', minute: '2-digit',
+                day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+        }
+
+        // Trạng thái
+        let statusHtml = '';
+        if (s.status === "paused") {
+            statusHtml = '<span class="sched-status paused"><i class="fas fa-pause"></i> Tạm dừng</span>';
+        } else if (s.status === "sent" && s.repeat === "once") {
+            statusHtml = '<span class="sched-status sent"><i class="fas fa-check"></i> Đã gửi</span>';
+        } else if (scheduledDate && scheduledDate > now) {
+            statusHtml = '<span class="sched-status pending"><i class="fas fa-clock"></i> Đang chờ</span>';
+        } else {
+            statusHtml = '<span class="sched-status pending"><i class="fas fa-sync"></i> Hoạt động</span>';
+        }
+
+        // Nút thao tác
+        const isPaused = s.status === "paused";
+        const toggleIcon = isPaused ? "fa-play" : "fa-pause";
+        const toggleTitle = isPaused ? "Kích hoạt" : "Tạm dừng";
+        const toggleColor = isPaused ? "btn-success" : "btn-secondary";
+
+        return `
+            <tr>
+                <td><span class="notif-type-badge ${typeInfo.cls}">${typeInfo.label}</span></td>
+                <td style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(s.title || '').replace(/"/g, '&quot;')}">${s.title || '—'}</td>
+                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(s.message || '').replace(/"/g, '&quot;')}">${s.message || '—'}</td>
+                <td style="white-space: nowrap; font-size: 0.85rem;">${timeStr}</td>
+                <td><span style="font-size: 0.85rem;">${repeatLabel}</span></td>
+                <td>${statusHtml}</td>
+                <td style="white-space: nowrap;">
+                    <button class="btn btn-sm ${toggleColor}" onclick="adminToggleScheduled('${s.id}')" title="${toggleTitle}" style="margin-right: 4px;">
+                        <i class="fas ${toggleIcon}"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="adminDeleteScheduled('${s.id}')" title="Xóa">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+/**
+ * Tạo lịch hẹn thông báo mới
+ */
+async function adminCreateScheduledNotif() {
+    const title = document.getElementById("schedNotifTitle")?.value.trim();
+    const message = document.getElementById("schedNotifMessage")?.value.trim();
+    const type = document.getElementById("schedNotifType")?.value || "system";
+    const dateStr = document.getElementById("schedNotifDate")?.value;
+    const timeStr = document.getElementById("schedNotifTime")?.value;
+    const repeat = document.getElementById("schedNotifRepeat")?.value || "once";
+
+    if (!title) {
+        showNotification("Vui lòng nhập tiêu đề!", "warning");
+        return;
+    }
+    if (!message) {
+        showNotification("Vui lòng nhập nội dung!", "warning");
+        return;
+    }
+    if (!dateStr || !timeStr) {
+        showNotification("Vui lòng chọn ngày và giờ gửi!", "warning");
+        return;
+    }
+
+    // Parse ngày giờ
+    const scheduledDate = new Date(`${dateStr}T${timeStr}:00`);
+    const now = new Date();
+
+    if (scheduledDate <= now && repeat === "once") {
+        showNotification("Thời gian gửi phải ở tương lai!", "warning");
+        return;
+    }
+
+    try {
+        showLoading(true, "Đang tạo lịch hẹn...");
+
+        await db.collection("scheduled_notifications").add({
+            title: title,
+            message: message,
+            type: type,
+            scheduledAt: firebase.firestore.Timestamp.fromDate(scheduledDate),
+            repeat: repeat,
+            status: "pending", // pending | sent | paused
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastSentAt: null
+        });
+
+        showNotification("Đã tạo lịch hẹn thành công!", "success");
+
+        // Reset form
+        document.getElementById("schedNotifTitle").value = "";
+        document.getElementById("schedNotifMessage").value = "";
+        document.getElementById("schedNotifType").value = "system";
+        document.getElementById("schedNotifDate").value = "";
+        document.getElementById("schedNotifTime").value = "";
+        document.getElementById("schedNotifRepeat").value = "once";
+    } catch (err) {
+        console.error("Lỗi tạo lịch hẹn:", err);
+        showNotification("Không thể tạo lịch hẹn!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Tạm dừng / Kích hoạt lịch hẹn
+ */
+async function adminToggleScheduled(schedId) {
+    if (!db || !schedId) return;
+    try {
+        const doc = await db.collection("scheduled_notifications").doc(schedId).get();
+        if (!doc.exists) return;
+
+        const current = doc.data().status;
+        const newStatus = (current === "paused") ? "pending" : "paused";
+
+        await db.collection("scheduled_notifications").doc(schedId).update({
+            status: newStatus
+        });
+
+        showNotification(newStatus === "paused" ? "Đã tạm dừng lịch hẹn" : "Đã kích hoạt lại lịch hẹn", "success");
+    } catch (err) {
+        console.error("Lỗi toggle scheduled:", err);
+    }
+}
+
+/**
+ * Xóa 1 lịch hẹn
+ */
+async function adminDeleteScheduled(schedId) {
+    if (!db || !schedId) return;
+    if (!await customConfirm("Bạn có chắc muốn xóa lịch hẹn này?", { title: "Xóa lịch hẹn", type: "danger", confirmText: "Xóa" })) return;
+    try {
+        await db.collection("scheduled_notifications").doc(schedId).delete();
+        showNotification("Đã xóa lịch hẹn!", "success");
+    } catch (err) {
+        console.error("Lỗi xóa scheduled:", err);
+        showNotification("Không thể xóa lịch hẹn!", "error");
+    }
+}
+
+/**
+ * Xóa tất cả lịch hẹn
+ */
+async function adminDeleteAllScheduled() {
+    if (!db || allScheduledNotifs.length === 0) {
+        showNotification("Không có lịch hẹn nào!", "info");
+        return;
+    }
+    if (!await customConfirm(`Xóa tất cả ${allScheduledNotifs.length} lịch hẹn? Không thể hoàn tác!`, { title: "Xóa tất cả lịch", type: "danger", confirmText: "Xóa tất cả" })) return;
+
+    try {
+        showLoading(true, "Đang xóa...");
+        let batch = db.batch();
+        let count = 0;
+        for (const s of allScheduledNotifs) {
+            batch.delete(db.collection("scheduled_notifications").doc(s.id));
+            count++;
+            if (count % 499 === 0) {
+                await batch.commit();
+                batch = db.batch();
+            }
+        }
+        await batch.commit();
+        showNotification(`Đã xóa ${count} lịch hẹn!`, "success");
+    } catch (err) {
+        console.error("Lỗi xóa tất cả scheduled:", err);
+        showNotification("Có lỗi xảy ra!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Schedule checker đã chuyển sang notifications.js (chạy ngầm cho mọi user)

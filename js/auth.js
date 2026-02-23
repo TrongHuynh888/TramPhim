@@ -137,7 +137,7 @@ async function handleRegister(event) {
     });
 
     showNotification(
-      "Đăng ký thành công! Chào mừng bạn đến với MovieChain!",
+      "Đăng ký thành công! Chào mừng bạn đến với Trạm Phim!",
       "success",
     );
     closeModal("authModal");
@@ -175,9 +175,18 @@ async function handleLogout() {
   try {
     await auth.signOut();
 
+    // Dừng lắng nghe realtime thông báo
+    if (typeof stopNotifications === "function") {
+        stopNotifications();
+    }
+
     // 👇 THÊM ĐOẠN NÀY ĐỂ ĐÓNG MENU & RESET GIAO DIỆN 👇
     const dropdown = document.getElementById("userDropdown");
     if (dropdown) dropdown.classList.remove("active"); // Đóng menu ngay lập tức
+    
+    // Đóng dropdown thông báo nếu đang mở
+    const notifDropdown = document.getElementById("notificationDropdown");
+    if (notifDropdown) notifDropdown.classList.add("hidden");
 
     // Đảm bảo nút Đăng nhập hiện lại ngay (phòng hờ updateAuthUI chạy chậm)
     const loginBtn = document.getElementById("loginBtn");
@@ -213,9 +222,7 @@ async function handleForgotPassword(event) {
     await auth.sendPasswordResetEmail(email);
 
     // Thông báo thành công
-    alert(
-      "✅ Đã gửi email khôi phục!\n\nVui lòng kiểm tra hộp thư (cả mục Spam) và làm theo hướng dẫn trong email để đặt lại mật khẩu.",
-    );
+    await customAlert("✅ Đã gửi email khôi phục! Vui lòng kiểm tra hộp thư (cả mục Spam) và làm theo hướng dẫn trong email để đặt lại mật khẩu.", { title: "Gửi thành công", type: "success" });
 
     // Quay về trang đăng nhập
     switchAuthTab("login");
@@ -265,7 +272,7 @@ async function handleAuthStateChange(user) {
           // 🛡️ Kiểm tra khóa tài khoản (Dùng dữ liệu mới)
           if (freshData.isActive === false) {
             await auth.signOut();
-            alert("⛔ TÀI KHOẢN CỦA BẠN ĐÃ BỊ KHÓA!");
+            await customAlert("⛔ TÀI KHOẢN CỦA BẠN ĐÃ BỊ KHÓA!", { title: "Tài khoản bị khóa", type: "danger" });
             window.location.reload();
             return;
           }
@@ -300,6 +307,13 @@ async function handleAuthStateChange(user) {
     // 3. Cập nhật lần đăng nhập cuối
     createOrUpdateUserDoc(user);
 
+    // Bắt đầu lắng nghe thông báo (Chờ tí để isAdmin chắc chắn được set)
+    setTimeout(() => {
+      if (typeof initNotifications === "function") {
+          initNotifications(user, isAdmin);
+      }
+    }, 500);
+
     // 4. Load dữ liệu admin nếu cần
     if (isAdmin) {
       loadAdminData();
@@ -309,6 +323,7 @@ async function handleAuthStateChange(user) {
     renderFeaturedMovies();
     renderNewMovies();
     renderAllMovies();
+    renderBannerSlider();
     
     // 6. Cập nhật watch progress cho các thẻ phim (đợi DOM cập nhật)
     if (typeof updateAllWatchProgress === 'function') {
@@ -336,6 +351,7 @@ async function handleAuthStateChange(user) {
     renderFeaturedMovies();
     renderNewMovies();
     renderAllMovies();
+    renderBannerSlider();
   }
 }
 /**
@@ -557,6 +573,13 @@ function toggleUserDropdown(event) {
   }
 
   const dropdown = document.getElementById("userDropdown");
+  const vipNotif = document.getElementById("vipNotificationDropdown");
+  
+  // Đóng dropdown thông báo VIP nếu nó đang mở
+  if (vipNotif && !vipNotif.classList.contains("hidden")) {
+      vipNotif.classList.add("hidden");
+  }
+
   if (dropdown) {
     // Toggle trạng thái
     const isActive = dropdown.classList.toggle("active");

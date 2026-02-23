@@ -101,13 +101,20 @@ function formatTimeAgo(date) {
 
 function createSlug(text) {
   if (!text) return "";
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  let slug = text.toLowerCase();
+
+  // 1. Xử lý tiếng Việt (Bỏ dấu)
+  slug = slug.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Loại bỏ các dấu kết hợp
+  slug = slug.replace(/[đĐ]/g, "d");
+  
+  // 2. Thay thế các ký tự đặc biệt và khoảng trắng
+  slug = slug.replace(/[^a-z0-9\s-]/g, "") // Xóa ký tự lạ (giữ lại khoảng trắng và gạch ngang)
+             .replace(/\s+/g, "-")         // Thay khoảng trắng thành gạch ngang
+             .replace(/-+/g, "-")          // Xóa các dấu gạch ngang bị lặp
+             .trim()                       // Cắt lề 2 đầu
+             .replace(/^-+|-+$/g, "");      // Xóa gạch ngang ở đầu và cuối
+
+  return slug;
 }
 
 function getStatusText(status) {
@@ -131,7 +138,16 @@ function escapeHtml(text) {
 // 3. ĐIỀU HƯỚNG & MODAL
 // ============================================
 
-function showPage(pageName) {
+function showPage(pageName, addToHistory = true) {
+  // 0. Cập nhật URL (Sử dụng Hash Routing để fix lỗi F5)
+  if (addToHistory) {
+      let basePath = window.APP_BASE_PATH || "";
+      // Đảm bảo không bị double slash khi nối với #/
+      const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+      const url = pageName === 'home' ? basePath : `${cleanBase}#/${pageName}`;
+      history.pushState({ page: pageName }, "", url);
+  }
+
   // 1. Ẩn tất cả các trang
   document.querySelectorAll(".page").forEach((page) => {
     page.classList.remove("active");
@@ -150,6 +166,16 @@ function showPage(pageName) {
       link.classList.add("active");
     }
   });
+
+  // 3b. Trigger Series Movies Page Logic
+  if (pageName === 'seriesMovies' && typeof window.renderSeriesMoviesPage === 'function') {
+      window.renderSeriesMoviesPage();
+  }
+
+  // 3c. Trigger Single Movies Page Logic
+  if (pageName === 'singleMovies' && typeof window.renderSingleMoviesPage === 'function') {
+      window.renderSingleMoviesPage();
+  }
 
   // 4. Xử lý riêng cho trang Admin và Footer
   const footer = document.getElementById("footer");
@@ -447,3 +473,397 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// ============================================
+// 6. COMMENT REACTIONS SYSTEM
+// ============================================
+
+const EMOJI_MAP = {
+    'like': '👍',
+    'heart': '❤️',
+    'haha': '😂',
+    'wow': '😮',
+    'sad': '😢',
+    'angry': '😡'
+};
+
+/**
+ * Xử lý thả cảm xúc cho bình luận (Dùng chung cho Intro & Detail)
+ */
+async function toggleCommentReaction(commentId, type, movieId, containerId) {
+    if (!currentUser) {
+        showNotification("Vui lòng đăng nhập để thực hiện!", "warning");
+        if (typeof openAuthModal === 'function') openAuthModal();
+        return;
+    }
+
+    if (!db) return;
+
+    try {
+        const commentRef = db.collection("comments").doc(commentId);
+        
+        // Optimistic UI: Cập nhật giao diện ngay lập tức
+        const doc = await commentRef.get();
+        if (!doc.exists) return;
+
+        const data = doc.data();
+        const reactions = data.reactions || {};
+        const summary = data.reactionSummary || {};
+        const userId = currentUser.uid;
+
+        const oldType = reactions[userId];
+        
+        if (oldType === type) {
+            delete reactions[userId];
+            summary[type] = Math.max(0, (summary[type] || 0) - 1);
+        } else {
+            if (oldType) {
+                summary[oldType] = Math.max(0, (summary[oldType] || 0) - 1);
+            }
+            reactions[userId] = type;
+            summary[type] = (summary[type] || 0) + 1;
+        }
+
+        // Cập nhật UI ngay lập tức mà không cần reload list
+        updateReactionUILocally(commentId, reactions, summary);
+
+        // Sau đó mới cập nhật Firestore
+        await commentRef.update({
+            reactions: reactions,
+            reactionSummary: summary
+        });
+
+    } catch (error) {
+        console.error("Lỗi toggle reaction:", error);
+    }
+}
+
+/**
+ * Cập nhật giao diện reaction cục bộ cho một bình luận cụ thể
+ */
+function updateReactionUILocally(commentId, reactions, summary) {
+    // 1. Tìm comment item (hỗ trợ cả prefix của Intro và Detail)
+    const commentItem = document.getElementById(`intro-comment-${commentId}`) || 
+                        document.getElementById(`comment-${commentId}`);
+    if (!commentItem) return;
+
+    // 2. Cập nhật nút Thích (Trạng thái Active)
+    const triggerBtn = commentItem.querySelector('.btn-reaction-trigger');
+    if (triggerBtn) {
+        const isActive = currentUser && reactions && reactions[currentUser.uid];
+        if (isActive) {
+            triggerBtn.classList.add('active');
+        } else {
+            triggerBtn.classList.remove('active');
+        }
+    }
+
+    // 3. Cập nhật Summary (Tổng số lượng emoji)
+    const summaryWrapper = document.getElementById(`reaction-summary-${commentId}`);
+    if (summaryWrapper) {
+        summaryWrapper.innerHTML = renderReactionSummaryContent(summary);
+    }
+    
+    // Tắt picker
+    const picker = document.getElementById(`picker-${commentId}`);
+    if (picker) picker.classList.remove('show');
+}
+
+/**
+ * Render chuỗi HTML cho phần tổng hợp reaction
+ */
+function renderReactionSummaryHtml(commentId, summary) {
+    return `<div class="reaction-summary-wrapper" id="reaction-summary-${commentId}">
+        ${renderReactionSummaryContent(summary)}
+    </div>`;
+}
+
+/**
+ * Render nội dung bên trong summary
+ */
+function renderReactionSummaryContent(summary) {
+    if (!summary) return "";
+    
+    const types = Object.keys(summary).filter(t => summary[t] > 0);
+    if (types.length === 0) return "";
+
+    const total = Object.values(summary).reduce((a, b) => a + b, 0);
+    const sortedTypes = types.sort((a, b) => summary[b] - summary[a]).slice(0, 3);
+    const iconsHtml = sortedTypes.map(t => `<span title="${t}">${EMOJI_MAP[t]}</span>`).join("");
+
+    return `
+        <div class="reaction-summary">
+            <div class="reaction-summary-icons">
+                ${iconsHtml}
+            </div>
+            <span class="reaction-count">${total}</span>
+        </div>
+    `;
+}
+
+/**
+ * Bật/Tắt picker cho Mobile
+ */
+function toggleReactionPicker(commentId) {
+    const picker = document.getElementById(`picker-${commentId}`);
+    if (picker) {
+        document.querySelectorAll('.reaction-picker.show').forEach(p => {
+            if (p !== picker) p.classList.remove('show');
+        });
+        picker.classList.toggle('show');
+    }
+}
+
+/* ============================================
+   7. HỆ THỐNG POPUP MODAL CHUYÊN NGHIỆP
+   Thay thế confirm(), prompt(), alert() native
+   ============================================ */
+
+/**
+ * Tạo popup container và inject vào DOM nếu chưa có
+ */
+function _getPopupContainer() {
+    let container = document.getElementById("customPopupOverlay");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "customPopupOverlay";
+        container.className = "custom-popup-overlay";
+        container.innerHTML = `
+            <div class="custom-popup" id="customPopupBox">
+                <div class="custom-popup-icon" id="customPopupIcon"></div>
+                <h3 class="custom-popup-title" id="customPopupTitle"></h3>
+                <p class="custom-popup-message" id="customPopupMessage"></p>
+                <div class="custom-popup-input-wrap" id="customPopupInputWrap" style="display:none;">
+                    <select class="custom-popup-input form-select" id="customPopupSelect" style="display:none; margin-bottom: 10px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; width: 100%; font-family: inherit;">
+                        <!-- Options sẽ được gen bằng js -->
+                    </select>
+                    <input type="text" class="custom-popup-input" id="customPopupInput" />
+                    <textarea class="custom-popup-input" id="customPopupTextarea" rows="4" style="display:none; resize: vertical; font-family: inherit; line-height: 1.5; padding-top: 10px;"></textarea>
+                </div>
+                <div class="custom-popup-actions" id="customPopupActions"></div>
+            </div>
+        `;
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
+/**
+ * Hiển thị popup nội bộ (dùng chung cho confirm, prompt, alert)
+ */
+function _showCustomPopup({ title, message, icon, iconColor, inputVisible, isTextarea, selectOptions, inputDefault, confirmText, cancelText, confirmClass, onConfirm, onCancel }) {
+    const overlay = _getPopupContainer();
+    const titleEl = document.getElementById("customPopupTitle");
+    const messageEl = document.getElementById("customPopupMessage");
+    const iconEl = document.getElementById("customPopupIcon");
+    const inputWrap = document.getElementById("customPopupInputWrap");
+    const selectEl = document.getElementById("customPopupSelect");
+    const inputEl = document.getElementById("customPopupInput");
+    const textareaEl = document.getElementById("customPopupTextarea");
+    const actionsEl = document.getElementById("customPopupActions");
+
+    // Set nội dung
+    titleEl.textContent = title || "Thông báo";
+    messageEl.textContent = message || "";
+    iconEl.innerHTML = icon ? `<i class="${icon}" style="color: ${iconColor || '#4db8ff'};"></i>` : "";
+    iconEl.style.display = icon ? "flex" : "none";
+
+    // Input (cho prompt)
+    if (inputVisible) {
+        inputWrap.style.display = "block";
+        
+        // 1. Phục vụ thẻ Select nếu có mảng selectOptions
+        if (selectOptions && Array.isArray(selectOptions) && selectOptions.length > 0) {
+            if (selectEl) {
+                selectEl.style.display = "block";
+                selectEl.innerHTML = selectOptions.map(opt => `<option value="${opt.value}" style="background: #1a1f36; color: #fff;">${opt.label}</option>`).join("");
+            }
+        } else {
+            if (selectEl) selectEl.style.display = "none";
+        }
+
+        // 2. Text/Textarea
+        if (isTextarea && textareaEl) {
+            inputEl.style.display = "none";
+            textareaEl.style.display = "block";
+            textareaEl.value = inputDefault || "";
+            setTimeout(() => textareaEl.focus(), 300);
+        } else {
+            if (textareaEl) textareaEl.style.display = "none";
+            inputEl.style.display = "block";
+            inputEl.value = inputDefault || "";
+            setTimeout(() => inputEl.focus(), 300);
+        }
+    } else {
+        inputWrap.style.display = "none";
+    }
+
+    // Nút hành động
+    let buttonsHtml = "";
+    if (cancelText) {
+        buttonsHtml += `<button class="custom-popup-btn custom-popup-btn-cancel" id="customPopupCancel">${cancelText}</button>`;
+    }
+    buttonsHtml += `<button class="custom-popup-btn ${confirmClass || 'custom-popup-btn-primary'}" id="customPopupConfirm">${confirmText || 'OK'}</button>`;
+    actionsEl.innerHTML = buttonsHtml;
+
+    // Hiện popup với animation
+    overlay.classList.add("active");
+
+    // Bind sự kiện
+    const confirmBtn = document.getElementById("customPopupConfirm");
+    const cancelBtn = document.getElementById("customPopupCancel");
+
+    const closePopup = () => {
+        overlay.classList.remove("active");
+    };
+
+    confirmBtn.onclick = () => {
+        closePopup();
+        if (onConfirm) {
+            let val = true;
+            if (inputVisible) {
+                // Return object nếu có select
+                const textVal = isTextarea ? textareaEl.value : inputEl.value;
+                if (selectOptions && selectOptions.length > 0 && selectEl) {
+                    val = {
+                        selectValue: selectEl.value,
+                        textValue: textVal
+                    };
+                } else {
+                    val = textVal;
+                }
+            }
+            onConfirm(val);
+        }
+    };
+
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            closePopup();
+            if (onCancel) onCancel();
+        };
+    }
+
+    // Enter để xác nhận, Escape để hủy
+    const keyHandler = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            confirmBtn.click();
+            document.removeEventListener("keydown", keyHandler);
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            if (cancelBtn) cancelBtn.click();
+            else confirmBtn.click();
+            document.removeEventListener("keydown", keyHandler);
+        }
+    };
+    document.addEventListener("keydown", keyHandler);
+
+    // Click overlay đóng (coi như hủy)
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            closePopup();
+            if (onCancel) onCancel();
+            document.removeEventListener("keydown", keyHandler);
+        }
+    };
+}
+
+/**
+ * Thay thế confirm() — trả về Promise<boolean>
+ * @param {string} message - Nội dung xác nhận
+ * @param {Object} options - { title, icon, confirmText, cancelText, type }
+ * @returns {Promise<boolean>}
+ */
+function customConfirm(message, options = {}) {
+    const type = options.type || "warning";
+    const iconMap = {
+        danger: { icon: "fas fa-exclamation-triangle", color: "#ff6b6b" },
+        warning: { icon: "fas fa-exclamation-circle", color: "#ffc107" },
+        info: { icon: "fas fa-info-circle", color: "#4db8ff" },
+        success: { icon: "fas fa-check-circle", color: "#51cf66" }
+    };
+    const typeInfo = iconMap[type] || iconMap.warning;
+
+    return new Promise((resolve) => {
+        _showCustomPopup({
+            title: options.title || "Xác nhận",
+            message: message,
+            icon: typeInfo.icon,
+            iconColor: typeInfo.color,
+            inputVisible: false,
+            confirmText: options.confirmText || "Xác nhận",
+            cancelText: options.cancelText || "Hủy",
+            confirmClass: type === "danger" ? "custom-popup-btn-danger" : "custom-popup-btn-primary",
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false)
+        });
+    });
+}
+
+/**
+ * Thay thế prompt() — trả về Promise<string|null>
+ * @param {string} message - Nội dung hướng dẫn
+ * @param {Object} options - { title, defaultValue, placeholder, confirmText, cancelText }
+ * @returns {Promise<string|null>}
+ */
+function customPrompt(message, options = {}) {
+    return new Promise((resolve) => {
+        _showCustomPopup({
+            title: options.title || "Nhập thông tin",
+            message: message,
+            icon: "fas fa-edit",
+            iconColor: "#4db8ff",
+            inputVisible: true,
+            isTextarea: options.isTextarea || false,
+            selectOptions: options.selectOptions || null,
+            inputDefault: options.defaultValue || "",
+            confirmText: options.confirmText || "Xác nhận",
+            cancelText: options.cancelText || "Hủy",
+            confirmClass: "custom-popup-btn-primary",
+            onConfirm: (value) => resolve(value),
+            onCancel: () => resolve(null)
+        });
+
+        // Set placeholder nếu có
+        const inputEl = document.getElementById("customPopupInput");
+        const textareaEl = document.getElementById("customPopupTextarea");
+        if (options.placeholder) {
+            if (inputEl) inputEl.placeholder = options.placeholder;
+            if (textareaEl) textareaEl.placeholder = options.placeholder;
+        }
+    });
+}
+
+/**
+ * Thay thế alert() — trả về Promise<void>
+ * @param {string} message - Nội dung thông báo
+ * @param {Object} options - { title, type }
+ * @returns {Promise<void>}
+ */
+function customAlert(message, options = {}) {
+    const type = options.type || "info";
+    const iconMap = {
+        danger: { icon: "fas fa-times-circle", color: "#ff6b6b" },
+        warning: { icon: "fas fa-exclamation-triangle", color: "#ffc107" },
+        info: { icon: "fas fa-info-circle", color: "#4db8ff" },
+        success: { icon: "fas fa-check-circle", color: "#51cf66" }
+    };
+    const typeInfo = iconMap[type] || iconMap.info;
+
+    return new Promise((resolve) => {
+        _showCustomPopup({
+            title: options.title || "Thông báo",
+            message: message,
+            icon: typeInfo.icon,
+            iconColor: typeInfo.color,
+            inputVisible: false,
+            confirmText: "OK",
+            cancelText: null,
+            confirmClass: "custom-popup-btn-primary",
+            onConfirm: () => resolve(),
+            onCancel: () => resolve()
+        });
+    });
+}
+

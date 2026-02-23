@@ -86,11 +86,10 @@ async function viewMovieIntro(movieId, updateHistory = true) {
     setTextContent("introAge", movie.ageLimit || "T13");
     setTextContent("introQuality", movie.quality || "HD");
     setTextContent("introCountry", movie.country || "Quốc tế");
-    setTextContent("introCategory", movie.category || "Phim lẻ");
+    setTextContent("introCategory", (movie.categories && movie.categories.length > 0) ? movie.categories.join(', ') : (movie.category || "Phim lẻ"));
     setTextContent("introRating", movie.rating || "N/A");
     
     // -- Info New Fields (Cast, Version)
-    setTextContent("introCast", movie.cast || "Đang cập nhật...");
     setTextContent("introCast", movie.cast || "Đang cập nhật...");
     
     // -- Versions (Dynamic Buttons)
@@ -148,6 +147,14 @@ async function viewMovieIntro(movieId, updateHistory = true) {
     }
 
     // -- Nút Like (Update trạng thái)
+    const introLikeBtn = document.getElementById("introLikeBtn");
+    if (introLikeBtn) {
+        // Xóa các class like cũ để tránh bị trùng ID khi chuyển phim
+        introLikeBtn.classList.forEach(cls => {
+            if (cls.startsWith('btn-like-')) introLikeBtn.classList.remove(cls);
+        });
+        introLikeBtn.classList.add(`btn-like-${movieId}`);
+    }
     updateIntroLikeButton(movieId);
 
     // 4. Load Bình luận Intro
@@ -155,12 +162,14 @@ async function viewMovieIntro(movieId, updateHistory = true) {
 
     // 5. Chuyển trang
     console.log("📌 Đang gọi showPage('movieIntro')...");
-    showPage("movieIntro");
+    showPage("movieIntro", false); // Không push state ở đây để tránh duplicate
     
     // Thay đổi URL sử dụng History API (Chỉ làm khi updateHistory = true)
     if (movie && movie.title && updateHistory) {
-        const slug = movie.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        const newUrl = `/intro/${slug}-${movieId}`;
+        const slug = createSlug(movie.title);
+        let basePath = window.APP_BASE_PATH || "";
+        const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+        const newUrl = `${cleanBase}#/intro/${slug}-${movieId}`;
         history.pushState({ movieId: movieId, page: 'intro' }, movie.title, newUrl);
         console.log("✅ Đã thay đổi URL thành:", newUrl);
     }
@@ -190,8 +199,10 @@ function playMovieFromIntro() {
         // Thay đổi URL trước khi chuyển trang
         const movie = allMovies.find(m => m.id === currentIntroMovieId);
         if (movie) {
-            const slug = movie.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            const newUrl = `/watch/${slug}-${currentIntroMovieId}`;
+            const slug = createSlug(movie.title || "video");
+            let basePath = window.APP_BASE_PATH || "";
+            const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+            const newUrl = `${cleanBase}#/watch/${slug}-${currentIntroMovieId}`;
             history.pushState({ movieId: currentIntroMovieId, page: 'watch' }, movie.title, newUrl);
         }
         
@@ -202,7 +213,7 @@ function playMovieFromIntro() {
         }
 
         // Chuyển sang trang Detail/Player cũ
-        viewMovieDetail(currentIntroMovieId);
+        viewMovieDetail(currentIntroMovieId, false);
     }
 }
 
@@ -253,11 +264,15 @@ function updateIntroLikeButton(movieId) {
     }
 
     if (isLiked) {
-        btn.innerHTML = '<i class="fas fa-check"></i> Đã thích';
-        btn.classList.add("btn-success"); // Xanh hoặc đỏ tùy theme
+        btn.innerHTML = '<i class="fas fa-heart"></i> Đã thích';
+        btn.classList.add("btn-success");
+        btn.classList.add("liked");
+        btn.style.color = "#fff";
     } else {
         btn.innerHTML = '<i class="far fa-heart"></i> Yêu thích';
         btn.classList.remove("btn-success");
+        btn.classList.remove("liked");
+        btn.style.color = "";
     }
 }
 
@@ -302,7 +317,13 @@ async function loadIntroComments(movieId) {
                     <i class="fas fa-star" data-value="3"></i>
                     <i class="fas fa-star" data-value="4"></i>
                     <i class="fas fa-star" data-value="5"></i>
+                    <i class="fas fa-star" data-value="6"></i>
+                    <i class="fas fa-star" data-value="7"></i>
+                    <i class="fas fa-star" data-value="8"></i>
+                    <i class="fas fa-star" data-value="9"></i>
+                    <i class="fas fa-star" data-value="10"></i>
                 </div>
+                <span class="rating-value" id="introRatingValue" style="margin-left: 10px; font-weight: bold; color: var(--accent-secondary);">0/10</span>
             </div>
             <textarea class="form-textarea" id="introCommentContent" placeholder="Viết cảm nghĩ của bạn về phim này..."></textarea>
             <button class="btn btn-primary" style="margin-top:10px;" onclick="submitIntroComment()">Gửi bình luận</button>
@@ -327,66 +348,367 @@ async function loadIntroComments(movieId) {
 async function loadCommentsToContainer(movieId, targetId) {
     if (!db) return;
     const list = document.getElementById(targetId);
+    if (!list) return;
     
     try {
+        let comments = [];
         const snapshot = await db.collection("comments")
             .where("movieId", "==", movieId)
             .orderBy("createdAt", "desc")
-            .limit(20)
+            .limit(50)
             .get();
 
         if (snapshot.empty) {
-            list.innerHTML = '<p class="text-muted">Chưa có bình luận nào. Hãy là người đầu tiên!</p>';
+            list.innerHTML = '<p class="text-center text-muted" style="padding: 20px;">Chưa có bình luận nào. Hãy là người đầu tiên!</p>';
             return;
         }
 
-        list.innerHTML = snapshot.docs.map(doc => {
-            const c = doc.data();
-            const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
-            // Stars
-            const stars = Array(5).fill(0).map((_, i) => 
-                `<i class="fas fa-star ${i < c.rating ? 'text-warning' : 'text-muted'}"></i>`
-            ).join("");
-            
-            return `
-                <div class="comment-item">
-                    <div class="comment-header">
-                        <strong>${c.userName}</strong>
-                        <span class="comment-stars">${stars}</span>
-                        <small class="text-muted ml-auto">${date}</small>
-                    </div>
-                    <div class="comment-body">${c.content}</div>
-                </div>
-            `;
-        }).join("");
+        comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // --- SẮP XẾP BÌNH LUẬN THEO CẤP CHA - CON ---
+        const commentMap = {};
+        comments.forEach(c => {
+            c.children = [];
+            commentMap[c.id] = c;
+        });
+
+        const rootComments = [];
+        comments.forEach(c => {
+            if (c.parentId && commentMap[c.parentId]) {
+                commentMap[c.parentId].children.push(c);
+                commentMap[c.parentId].children.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            } else {
+                rootComments.push(c);
+            }
+        });
+
+        // Render
+        list.innerHTML = rootComments.map(comment => createIntroCommentHtml(comment)).join("");
         
     } catch (e) {
         console.error("Lỗi load comment intro:", e);
-        list.innerHTML = "Lỗi tải bình luận.";
+        list.innerHTML = '<p class="text-center text-muted">Lỗi tải bình luận.</p>';
     }
+}
+
+/**
+ * Tạo HTML cho bình luận Intro (Đồng bộ với detail.js)
+ */
+function createIntroCommentHtml(comment) {
+    const initial = (comment.userName || "U")[0].toUpperCase();
+    
+    // Thời gian
+    let timeDisplay = "Vừa xong";
+    if (comment.createdAt?.toDate) {
+        const dateObj = comment.createdAt.toDate();
+        timeDisplay = `${formatTimeAgo(dateObj)} <span style="opacity: 0.6; font-size: 10px; margin-left: 5px;">• ${formatDateTime(dateObj)}</span>`;
+    }
+
+    // Nút xóa
+    const deleteBtn = (isAdmin || (currentUser && currentUser.uid === comment.userId))
+        ? `<button class="btn btn-sm btn-danger" onclick="deleteIntroComment('${comment.id}')">
+               <i class="fas fa-trash"></i>
+           </button>`
+        : "";
+
+    // Avatar
+    const avatarHtml = (comment.userAvatar && comment.userAvatar.startsWith("http"))
+        ? `<img src="${comment.userAvatar}" class="comment-avatar" style="object-fit: cover;" alt="${initial}" onerror="this.src='https://ui-avatars.com/api/?name=${initial}&background=random'">`
+        : `<div class="comment-avatar">${initial}</div>`;
+
+    // Stars & Rating Text
+    const stars = Array(10).fill(0).map((_, i) => 
+        `<i class="fas fa-star ${i < comment.rating ? 'text-warning' : 'text-muted'}" style="font-size: 12px;"></i>`
+    ).join("");
+    const ratingText = comment.rating ? `<span class="comment-rating-text" style="margin-left: 5px; font-weight: bold; color: var(--accent-secondary); font-size: 13px;">${comment.rating}/10</span>` : "";
+
+    // Replies logic
+    let childrenHtml = "";
+    let showRepliesBtn = "";
+    if (comment.children && comment.children.length > 0) {
+        const renderedChildren = comment.children.map(child => 
+            `<div class="reply-node hidden-reply">${createIntroCommentHtml(child)}</div>`
+        ).join("");
+
+        childrenHtml = `<div class="replies-list" id="intro-replies-list-${comment.id}">${renderedChildren}</div>`;
+
+        showRepliesBtn = `
+            <div class="replies-controls">
+                <button class="btn-show-replies" id="intro-btn-show-${comment.id}" onclick="loadMoreIntroReplies('${comment.id}')">
+                    <i class="fas fa-caret-down"></i> <span>Xem ${comment.children.length} câu trả lời</span>
+                </button>
+                <button class="btn-hide-replies" id="intro-btn-hide-${comment.id}" onclick="hideAllIntroReplies('${comment.id}')">
+                    <i class="fas fa-eye-slash"></i> Ẩn tất cả
+                </button>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="comment-item" id="intro-comment-${comment.id}">
+            ${avatarHtml}
+            <div class="comment-content">
+                <div class="comment-header">
+                    <span class="comment-author">${comment.userName || "Ẩn danh"}</span>
+                    <div style="display: flex; align-items: center; gap: 2px;">
+                        <span class="comment-stars">${stars}</span>
+                        ${ratingText}
+                    </div>
+                </div>
+                <p class="comment-text">${escapeHtml(comment.content)}</p>
+                <div class="comment-actions">
+                    <div class="comment-time">${timeDisplay}</div>
+                    
+                    <div class="comment-reaction-container">
+                        <div class="reaction-picker" id="picker-${comment.id}">
+                            <span class="reaction-emoji-item" onclick="toggleCommentReaction('${comment.id}', 'like', currentIntroMovieId, 'introCommentsList')">👍</span>
+                            <span class="reaction-emoji-item" onclick="toggleCommentReaction('${comment.id}', 'heart', currentIntroMovieId, 'introCommentsList')">❤️</span>
+                            <span class="reaction-emoji-item" onclick="toggleCommentReaction('${comment.id}', 'haha', currentIntroMovieId, 'introCommentsList')">😂</span>
+                            <span class="reaction-emoji-item" onclick="toggleCommentReaction('${comment.id}', 'wow', currentIntroMovieId, 'introCommentsList')">😮</span>
+                            <span class="reaction-emoji-item" onclick="toggleCommentReaction('${comment.id}', 'sad', currentIntroMovieId, 'introCommentsList')">😢</span>
+                            <span class="reaction-emoji-item" onclick="toggleCommentReaction('${comment.id}', 'angry', currentIntroMovieId, 'introCommentsList')">😡</span>
+                        </div>
+                        <button class="btn-reaction-trigger ${((currentUser && comment.reactions && comment.reactions[currentUser.uid]) ? 'active' : '')}" 
+                                onclick="toggleReactionPicker('${comment.id}')">
+                            <i class="far fa-thumbs-up"></i> Thích
+                        </button>
+                    </div>
+
+                    ${renderReactionSummaryHtml(comment.id, comment.reactionSummary)}
+
+                    <button class="btn-reply" onclick="toggleIntroReplyForm('${comment.id}')">Trả lời</button>
+                    <div style="margin-left:auto;">${deleteBtn}</div>
+                </div>
+                
+                <div id="intro-reply-form-${comment.id}" class="reply-form-container">
+                    <div class="reply-input-group">
+                        <input type="text" id="intro-reply-input-${comment.id}" placeholder="Viết câu trả lời...">
+                        <button class="btn btn-sm btn-primary" onclick="submitIntroReply('${comment.id}')"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+
+                ${showRepliesBtn}
+                ${childrenHtml}
+            </div>
+        </div>
+    `;
 }
 
 /**
  * Gửi comment từ Intro
  */
 async function submitIntroComment() {
-    const content = document.getElementById("introCommentContent").value;
-    // Lấy rating từ UI (cần biến global hoặc DOM check class active)
-    // Giả sử ta dùng biến global currentRating (của detail.js) hoặc check DOM
-    const stars = document.querySelectorAll("#introRatingStars .fa-star.active");
-    const rating = stars.length || 5; 
+    if (!currentUser) {
+        showNotification("Vui lòng đăng nhập để bình luận!", "warning");
+        openAuthModal();
+        return;
+    }
 
-    if (!content.trim()) {
-        showNotification("Vui lòng nhập nội dung!", "warning");
+    const content = document.getElementById("introCommentContent").value.trim();
+    const stars = document.querySelectorAll("#introRatingStars .fa-star.active");
+    const rating = stars.length; 
+
+    if (!content) {
+        showNotification("Vui lòng nhập nội dung bình luận!", "warning");
+        return;
+    }
+
+    if (rating === 0) {
+        showNotification("Vui lòng chọn đánh giá!", "warning");
+        return;
+    }
+
+    if (!db) {
+        showNotification("Lỗi kết nối database!", "error");
         return;
     }
     
-    await submitCommentData(currentIntroMovieId, content, rating);
-    
-    // Reload
-    loadCommentsToContainer(currentIntroMovieId, "introCommentsList");
-    document.getElementById("introCommentContent").value = "";
-    showNotification("Đã gửi bình luận!", "success");
+    try {
+        showLoading(true, "Đang gửi bình luận...");
+        
+        await db.collection("comments").add({
+            movieId: currentIntroMovieId,
+            userId: currentUser.uid,
+            userName: currentUser.displayName || currentUser.email.split("@")[0],
+            userAvatar: currentUser.photoURL || "",
+            content: content,
+            rating: rating,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Reset form
+        document.getElementById("introCommentContent").value = "";
+        const starsEl = document.querySelectorAll("#introRatingStars .fa-star");
+        starsEl.forEach(s => s.classList.remove("active", "text-warning"));
+        const valText = document.getElementById("introRatingValue");
+        if (valText) valText.textContent = "0/10";
+        
+        // Reload
+        await loadCommentsToContainer(currentIntroMovieId, "introCommentsList");
+        
+        // Cập nhật rating trung bình của phim (Tái sử dụng hàm từ detail.js nếu có sẵn)
+        if (typeof updateMovieRating === "function") {
+            await updateMovieRating(currentIntroMovieId);
+        }
+
+        showNotification("Đã gửi bình luận!", "success");
+    } catch (error) {
+        console.error("Lỗi gửi bình luận intro:", error);
+        showNotification("Không thể gửi bình luận!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Trả lời bình luận từ Intro
+ */
+async function submitIntroReply(parentId) {
+    if (!currentUser) {
+        showNotification("Vui lòng đăng nhập để trả lời!", "warning");
+        openAuthModal();
+        return;
+    }
+
+    const input = document.getElementById(`intro-reply-input-${parentId}`);
+    const content = input.value.trim();
+
+    if (!content) {
+        showNotification("Vui lòng nhập nội dung!", "warning");
+        return;
+    }
+
+    try {
+        showLoading(true, "Đang gửi...");
+
+        await db.collection("comments").add({
+            movieId: currentIntroMovieId,
+            parentId: parentId,
+            userId: currentUser.uid,
+            userName: currentUser.displayName || currentUser.email.split("@")[0],
+            userAvatar: currentUser.photoURL || "",
+            content: content,
+            rating: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        showNotification("Đã trả lời!", "success");
+        input.value = "";
+        toggleIntroReplyForm(parentId);
+
+        // Reload danh sách bình luận
+        await loadCommentsToContainer(currentIntroMovieId, "introCommentsList");
+    } catch (error) {
+        console.error("Lỗi gửi reply intro:", error);
+        showNotification("Lỗi gửi trả lời!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Xóa bình luận từ Intro
+ */
+async function deleteIntroComment(commentId) {
+    if (!await customConfirm("Bạn có chắc chắn muốn xóa bình luận này?", { title: "Xóa bình luận", type: "danger", confirmText: "Xóa" })) return;
+
+    try {
+        showLoading(true, "Đang xóa...");
+        await db.collection("comments").doc(commentId).delete();
+        showNotification("Đã xóa bình luận!", "success");
+        
+        // Reload
+        await loadCommentsToContainer(currentIntroMovieId, "introCommentsList");
+        
+        // Cập nhật rating phim
+        if (typeof updateMovieRating === "function") {
+            await updateMovieRating(currentIntroMovieId);
+        }
+    } catch (error) {
+        console.error("Lỗi xóa bình luận intro:", error);
+        showNotification("Lỗi khi xóa!", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Bật/Tắt form trả lời tại Intro
+ */
+function toggleIntroReplyForm(commentId) {
+    if (!currentUser) {
+        showNotification("Vui lòng đăng nhập để trả lời!", "warning");
+        openAuthModal();
+        return;
+    }
+
+    // Đóng tất cả các form khác
+    document.querySelectorAll(".reply-form-container").forEach(el => el.classList.remove("active"));
+
+    const form = document.getElementById(`intro-reply-form-${commentId}`);
+    if (form) {
+        form.classList.toggle("active");
+        if (form.classList.contains("active")) {
+            setTimeout(() => document.getElementById(`intro-reply-input-${commentId}`).focus(), 100);
+        }
+    }
+}
+
+/**
+ * Hiện thêm replies
+ */
+function loadMoreIntroReplies(parentId) {
+    const container = document.getElementById(`intro-replies-list-${parentId}`);
+    const btn = document.getElementById(`intro-btn-show-${parentId}`);
+    if (!container || !btn) return;
+
+    const hiddenItems = Array.from(container.children).filter(node => node.classList.contains("hidden-reply"));
+
+    if (hiddenItems.length === 0) {
+        btn.style.display = "none";
+        return;
+    }
+
+    let count = 0;
+    hiddenItems.forEach((item, index) => {
+        if (index < 5) {
+            item.classList.remove("hidden-reply");
+            item.style.animation = "fadeIn 0.5s ease";
+            count++;
+        }
+    });
+
+    const remaining = hiddenItems.length - count;
+    if (remaining > 0) {
+        btn.querySelector("span").textContent = `Xem thêm ${remaining} câu trả lời`;
+    } else {
+        btn.style.display = "none";
+    }
+
+    const hideBtn = document.getElementById(`intro-btn-hide-${parentId}`);
+    if (hideBtn) hideBtn.style.display = "flex";
+}
+
+/**
+ * Ẩn tất cả replies
+ */
+function hideAllIntroReplies(parentId) {
+    const container = document.getElementById(`intro-replies-list-${parentId}`);
+    const showBtn = document.getElementById(`intro-btn-show-${parentId}`);
+    const hideBtn = document.getElementById(`intro-btn-hide-${parentId}`);
+
+    if (!container) return;
+
+    const allItems = container.querySelectorAll(".reply-node");
+    allItems.forEach(item => item.classList.add("hidden-reply"));
+
+    if (showBtn) {
+        showBtn.style.display = "flex";
+        const directCount = Array.from(container.children).length;
+        showBtn.innerHTML = `<i class="fas fa-caret-down"></i> <span>Xem ${directCount} câu trả lời</span>`;
+    }
+
+    if (hideBtn) hideBtn.style.display = "none";
 }
 
 // Logic Star Rating riêng cho Intro
@@ -395,13 +717,20 @@ function initStarRating(containerId) {
     if(!container) return;
     
     const stars = container.querySelectorAll(".fa-star");
+    const valText = document.getElementById("introRatingValue");
+    
     stars.forEach((star, index) => {
         star.onclick = () => {
+            const ratingValue = index + 1;
             // Reset hết
             stars.forEach(s => s.classList.remove("active", "text-warning"));
             // Active đến index chọn
             for(let i=0; i<=index; i++) {
                 stars[i].classList.add("active", "text-warning");
+            }
+            // Cập nhật text value
+            if (valText) {
+                valText.textContent = `${ratingValue}/10`;
             }
         };
     });

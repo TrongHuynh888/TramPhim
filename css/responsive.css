@@ -3,7 +3,7 @@
   box-sizing: border-box !important;
 }
 /* Chống tràn - nhưng loại trừ nav */
-body, .page, .section, .hero, .movie-grid, .footer, main {
+body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   max-width: 100vw !important;
 }
 /* ============================================
@@ -55,6 +55,24 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     padding-right: 20px !important;
   }
 
+  /* Banner Slider Tablet */
+  .hero-banner {
+    aspect-ratio: 16 / 9 !important;
+    max-height: 70vh !important;
+    margin-top: 80px !important;
+  }
+  .banner-content {
+    left: 30px !important;
+    bottom: 60px !important;
+    max-width: 500px !important;
+  }
+  .banner-title {
+    font-size: clamp(24px, 3.5vw, 40px) !important;
+  }
+  .banner-thumbs {
+    display: none !important; /* Ẩn thumbnails trên tablet */
+  }
+
   /* --- FIX POPUP CHO TABLET (iPad) --- */
   /* CHỈ ÁP DỤNG TỪ 769px ĐẾN 1366px (Tablet) - KHÔNG ẢNH HƯỞNG MOBILE */
   @media (min-width: 769px) {
@@ -75,63 +93,110 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
       opacity: 1 !important;
       pointer-events: auto !important;
       position: absolute;
-      top: -10px;
+      top: 50%; /* Căn giữa dọc để đè đều lên xuống */
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%) scale(1.05) !important; /* Scale nhẹ lại cho đỡ thô */
 
-      /* Kích thước cho Tablet (Rộng hơn Mobile xíu) */
-      width: 450px !important; /* User thích 450px */
+      /* Kích thước Tablet: Đồng bộ PC nhưng linh hoạt */
+      width: 350px !important; 
       max-width: 90vw !important;
       height: auto;
-      z-index: 5001;
-      box-shadow: 0 0 40px rgba(0, 0, 0, 0.95);
+      z-index: 9999 !important; /* Đẩy lên cao nhất để không bị chữ ở dưới đè */
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 1) !important; /* Bóng đổ đặc hoàn toàn */
       border: 1px solid var(--accent-primary);
-      background: #1f1f2e !important;
+      background: #1f1f2e !important; /* Nền tối đặc hoàn toàn */
       color: #fff !important;
+      opacity: 1 !important;
+      visibility: visible !important;
     }
 
-    /* Font chữ Popup Tablet */
+    /* ẨN THẺ PHIM GỐC KHI POPUP ACTIVE ĐỂ TRÁNH LỘ CẠNH */
+    .movie-card-wrapper.active-mobile .movie-card-static,
+    .movie-card-wrapper.active-mobile .landscape-img-container,
+    .movie-card-wrapper.active-mobile .landscape-info {
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    /* ÉP OVERFLOW CHO CHUỖI CONTAINER CHA TRÊN TABLET */
+    .country-section,
+    .country-movies-wrapper,
+    .country-movies-row {
+        overflow: visible !important;
+    }
+
+    /* FIX STACKING CONTEXT: Nâng section chứa popup lên trên các section khác */
+    .section-active-popup {
+        z-index: 9999 !important;
+        position: relative !important;
+    }
+
+    /* Font chữ Popup Tablet (Đồng bộ PC) */
     .movie-card-wrapper.active-mobile .popup-header-img {
-      height: 250px !important;
+      height: 180px !important; /* Thu gọn thêm để không bị dài */
     }
     .movie-card-wrapper.active-mobile .popup-body {
-      padding: 24px !important;
+      padding: 12px 16px !important; /* Giảm padding cho gọn */
     }
     .movie-card-wrapper.active-mobile .popup-title-new {
-      font-size: 24px !important;
-      margin-bottom: 12px;
+      font-size: 20px !important; /* Giảm từ 32px về gần PC */
+      margin-bottom: 10px;
       line-height: 1.3;
       color: #ffeb3b !important;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-      font-weight: 800 !important;
+      font-weight: 700 !important;
     }
     .movie-card-wrapper.active-mobile .popup-meta-row {
-      font-size: 15px !important;
+      font-size: 14px !important;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 8px;
     }
     .movie-card-wrapper.active-mobile .popup-meta-row span {
       color: #0fceeb !important;
     }
     .movie-card-wrapper.active-mobile .btn-popup-play {
-      font-size: 16px !important;
-      padding: 12px 24px;
-      height: 48px;
+      font-size: 14px !important;
+      padding: 8px 16px;
+      height: 42px;
     }
     .movie-card-wrapper.active-mobile .btn-popup-icon {
-      width: 48px;
-      height: 48px;
+      width: 42px;
+      height: 42px;
       font-size: 18px;
       background: rgba(255, 255, 255, 0.15) !important;
       color: #fff !important;
       border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+
+    /* --- TABLET: LANDSCAPE MOVIE CARD POPUP (16:9) --- */
+    .movie-card-landscape.active-mobile .movie-popup-nfx {
+        width: 380px !important; /* Landscape tablet hơi rộng hơn portrait xíu */
+    }
+    .movie-card-landscape.active-mobile .popup-title-main {
+        font-size: 20px !important;
+        color: #ffeb3b !important;
+    }
+    .movie-card-landscape.active-mobile .popup-genres-text {
+        font-size: 14px !important;
+        color: #ccc !important;
+    }
+    .movie-card-landscape.active-mobile .btn-play-pink {
+        font-size: 18px !important;
+        padding: 12px 24px !important;
+    }
+    .movie-card-landscape.active-mobile .btn-action-glass {
+        padding: 10px 18px !important;
+        font-size: 16px !important;
+    }
+    .movie-card-landscape.active-mobile .badge-item {
+        font-size: 14px !important;
+        padding: 4px 10px !important;
     }
     
     /* --- SMART POSITIONING (XỬ LÝ TRÀN MÀN HÌNH) --- */
     /* 1. Mở sang phải (Khi thẻ ở lề trái) */
     .movie-card-wrapper.active-mobile.popup-align-left .movie-popup-nfx {
         left: 0 !important;
-        transform: translateX(0) !important;
+        transform: translateY(-50%) scale(1.05) !important;
         transform-origin: left center;
     }
 
@@ -139,12 +204,35 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     .movie-card-wrapper.active-mobile.popup-align-right .movie-popup-nfx {
         left: auto !important;
         right: 0 !important;
-        transform: translateX(0) !important;
+        transform: translateY(-50%) scale(1.05) !important;
         transform-origin: right center;
     }
     
     .movie-card-wrapper.active-mobile .popup-genres-row {
-      display: none;
+      display: flex !important;
+      font-size: 22px !important; 
+      margin-top: 5px; 
+    }
+
+    /* --- FIX TRIỆT ĐỂ LỖI CUỘN TRANG & TRÀN VIỀN TABLET --- */
+    /* Tạo không gian ảo phía trên và dưới hàng phim để popup có chỗ "bay" ra ngoài */
+    .country-movies-wrapper {
+        overflow: visible !important;
+        padding-top: 50px !important;
+        padding-bottom: 50px !important;
+        margin-top: -50px !important;
+        margin-bottom: -50px !important;
+    }
+    .country-movies-row {
+        overflow: visible !important;
+        padding-top: 150px !important;
+        padding-bottom: 150px !important;
+        margin-top: -150px !important;
+        margin-bottom: -150px !important;
+        pointer-events: none; /* Tránh block click vào nền */
+    }
+    .country-movies-row > * {
+        pointer-events: auto; /* Cho phép click vào movie card */
     }
   }
 
@@ -162,6 +250,10 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     /* Ẩn thanh cuộn nhưng vẫn scroll được (UX hiện đại) */
     scrollbar-width: none; 
     -ms-overflow-style: none;
+    
+    /* Fix click issue on tablet */
+    position: relative;
+    z-index: 2000 !important;
   }
   .nav-menu::-webkit-scrollbar {
     display: none;
@@ -175,7 +267,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   @media (min-width: 769px) {
     .page {
       min-height: 80vh !important;
-      padding-top: 100px !important;
+      padding-top: 150px !important;
     }
   }
   
@@ -218,7 +310,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   .nav-container {
     padding: 5px 8px !important;
     gap: 4px;
-    height: 60px;
+    height: 70px;
     z-index: 2000;
     justify-content: space-between !important;
     background: var(--bg-primary) !important;
@@ -226,7 +318,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
 
   /* FIX PADDING PAGE MOBILE (Tránh khoảng đen thừa do rule tablet 100px) */
   .page {
-    padding-top: 60px !important;
+    padding-top: 80px !important;
     min-height: 100vh !important;
     background: var(--bg-primary) !important;
   }
@@ -240,19 +332,11 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     min-width: 0;
     margin-right: 5px;
   }
-  .nav-logo i {
-    font-size: 18px !important;
-    color: #e50914 !important;
-    flex-shrink: 0;
-  }
-  .nav-logo span {
-    display: block !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text-primary) !important;
+  .nav-logo .logo-img {
+    height: 50px; /* Reset to safe mobile size */
+    width: auto;
+    object-fit: contain;
+    max-width: 150px;
   }
 
   /* 2. Nhóm nút bên phải (Chứa tất cả icon) */
@@ -282,6 +366,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   .wallet-btn,
   #connectWalletBtn,
   .theme-toggle,
+  .notification-btn,
   .mobile-menu-toggle {
     width: 32px !important;
     height: 32px !important;
@@ -300,6 +385,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   .wallet-btn i,
   #connectWalletBtn i,
   .theme-toggle i,
+  .notification-btn i,
   .mobile-menu-toggle i {
     margin: 0 !important;
     font-size: 14px !important;
@@ -309,6 +395,24 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   .wallet-btn span,
   .wallet-btn .wallet-btn-text,
   #connectWalletBtn span {
+    display: none !important;
+  }
+
+  /* Notification wrapper mobile */
+  .notification-wrapper {
+    margin-right: 0 !important;
+  }
+  /* Notification dropdown mobile - full width */
+  .notification-dropdown {
+    position: fixed !important;
+    top: 70px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: 70vh !important;
+    border-radius: 12px !important;
+  }
+  .notification-dropdown::before {
     display: none !important;
   }
 
@@ -323,19 +427,23 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   }
   
   /* 4. LOGIC XỬ LÝ NÚT ĐĂNG NHẬP */
-  /* Trường hợp 1: Chưa đăng nhập - Icon tròn giống avatar */
+  /* Mobile: Nút login luôn hiện dạng icon tròn (kể cả khi đã đăng nhập) */
   #loginBtn {
     width: 32px !important;
     height: 32px !important;
     padding: 0 !important;
     border-radius: 50% !important;
     display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #e50914 0%, #ff0055 100%) !important;
-    box-shadow: 0 2px 10px rgba(229, 9, 20, 0.4);
+    background: linear-gradient(135deg, #007aff 0%, #4db8ff 100%) !important;
+    box-shadow: 0 2px 10px rgba(0, 122, 255, 0.4);
     border: none !important;
     min-width: unset !important;
+    order: -1;
   }
   #loginBtn i {
     font-size: 14px !important;
@@ -346,24 +454,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     display: none !important;
   }
 
-  /* Trường hợp 2: Đã đăng nhập (Avatar hiện) */
-  #authContainer:has(#userMenuTrigger:not(.hidden)) #loginBtn {
-    width: 30px !important;
-    height: 30px !important;
-    padding: 0 !important;
-    border-radius: 50% !important;
-    justify-content: center !important;
-    background: linear-gradient(135deg, #e50914 0%, #ff0055 100%) !important;
-    display: flex !important;
-    margin-right: 0 !important;
-  }
-  #authContainer:has(#userMenuTrigger:not(.hidden)) #loginBtn span {
-    display: none !important;
-  }
-  #authContainer:has(#userMenuTrigger:not(.hidden)) #loginBtn i {
-    margin: 0 !important;
-    font-size: 14px !important;
-  }
+
 
   /* 5. AVATAR USER */
   #userMenuTrigger {
@@ -371,7 +462,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     height: 32px !important;
     border-radius: 50% !important;
     overflow: hidden;
-    border: 1.5px solid #f02c3c !important;
+    border: 1.5px solid #4db8ff !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -388,10 +479,10 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   /* 6. Menu trượt - Cải thiện UX mobile */
   .nav-menu {
     position: fixed;
-    top: 60px;
+    top: 70px;
     right: 0;
     width: 100%;
-    height: calc(100dvh - 60px);
+    height: calc(100dvh - 70px);
     background: var(--bg-primary);
     display: flex !important;
     flex-direction: column !important;
@@ -438,7 +529,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     left: 0 !important;
     width: 0 !important;
     height: 2px !important;
-    background: linear-gradient(90deg, #e50914, #ff0055) !important;
+    background: linear-gradient(90deg, #007aff, #4db8ff) !important;
     transform: none !important;
     transition: width 0.3s !important;
   }
@@ -450,54 +541,85 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   }
   .nav-menu .nav-link:hover,
   .nav-menu .nav-link.active {
-    background: rgba(229, 9, 20, 0.1);
+    background: rgba(0, 122, 255, 0.1);
   }
   .nav-menu .nav-link i {
     font-size: 18px !important;
     width: 24px;
     text-align: center;
     flex-shrink: 0;
-    color: var(--accent-primary, #e50914);
+    color: var(--accent-primary, #4db8ff);
   }
   .nav-menu .nav-link.active i {
-    color: #ff0055;
+    color: #4db8ff;
   }
 
-  /* --- B. FIX LỖI BANNER (Thu gọn lại) --- */
-  .hero {
-    min-height: auto !important;
-    padding: 15px 15px 30px !important;
-    /* 👇 Thêm 2 dòng này để căn giữa nội dung theo chiều dọc nếu banner thấp */
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  /* --- B. BANNER SLIDER RESPONSIVE (MOBILE) --- */
+  .hero-banner {
+    aspect-ratio: 16 / 9 !important;
+    max-height: 50vh !important;
+    margin-top: 60px !important;
   }
-  .hero-content {
-    margin-top: 0 !important;
-    width: 100%;
-    text-align: center; /* Căn giữa nội dung */
+  .banner-content {
+    bottom: 50px !important;
+    left: 15px !important;
+    right: 15px !important;
+    max-width: 100% !important;
   }
-  /* Thu nhỏ chữ tiêu đề và mô tả */
-  .hero-title {
-    font-size: 22px !important; /* Chữ nhỏ lại */
+  .banner-title {
+    font-size: 22px !important;
     margin-bottom: 5px !important;
-    line-height: 1.2 !important;
   }
-  .hero-subtitle {
-    font-size: 12px !important;
-    margin-bottom: 15px !important;
-    /* Cắt bớt nếu dài quá 2 dòng */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  .banner-subtitle {
+    display: none !important; /* Ẩn tên phụ trên mobile */
   }
-  /* Thu nhỏ nút bấm */
-  .hero-actions .btn {
-    padding: 8px 16px !important;
+  .banner-meta {
+    margin-bottom: 6px !important;
+    gap: 6px !important;
+  }
+  .banner-meta span {
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+  }
+  .banner-genres {
     font-size: 12px !important;
+    margin-bottom: 8px !important;
+  }
+  .banner-desc {
+    display: none !important; /* Ẩn mô tả trên mobile */
+  }
+  .banner-actions {
+    gap: 8px !important;
+  }
+  .btn-banner-play {
+    padding: 8px 18px !important;
+    font-size: 13px !important;
+  }
+  .btn-banner-icon {
+    width: 36px !important;
     height: 36px !important;
+    font-size: 14px !important;
+  }
+  /* Ẩn nút nav (dùng swipe thay thế) */
+  .banner-nav {
+    display: none !important;
+  }
+  /* Ẩn thumbnails trên mobile */
+  .banner-thumbs {
+    display: none !important;
+  }
+  /* Dots nhỏ lại */
+  .banner-dots {
+    left: 15px !important;
+    bottom: 12px !important;
+    gap: 5px !important;
+  }
+  .banner-dot {
+    width: 8px !important;
+    height: 8px !important;
+  }
+  .banner-dot.active {
+    width: 22px !important;
   }
   /* --- C. FIX LỖI FOOTER (GỌN GÀNG 2 CỘT) --- */
   .footer {
@@ -695,17 +817,22 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   /* --- D. LƯỚI PHIM 4 CỘT --- */
   .movie-grid {
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 6px !important;
+    gap: 10px !important;
+    padding: 0 5px !important;
   }
   .card-body {
-    padding: 4px !important;
+    padding: 6px 4px !important;
   }
   .card-title {
-    font-size: 10px !important;
+    font-size: 11px !important;
     margin-bottom: 2px !important;
+    line-height: 1.3 !important;
   }
   .card-meta {
-    font-size: 9px !important;
+    font-size: 10px !important;
+  }
+  .card-image img {
+    border-radius: 6px !important;
   }
 
   /* --- E. FIX POPUP TO QUÁ (Thu nhỏ & Tinh chỉnh) --- */
@@ -723,12 +850,12 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     visibility: visible !important;
     opacity: 1 !important;
     position: absolute;
-    top: -10px;
+    top: 20px; /* Hạ thấp vừa phải (từ 40px) để không quá thấp cũng không quá cao */
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%); /* Scale 1.15 được kế thừa từ rule global mobile phía dưới */
 
-    /* 👇 GIẢM KÍCH THƯỚC POPUP */
-    width: 225px !important;
+    /* 👇 GIẢM KÍCH THƯỚC POPUP THEO YÊU CẦU */
+    width: 200px !important; /* Giảm từ 225px xuống 200px */
     height: auto;
     z-index: 5001;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.95);
@@ -736,6 +863,14 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     /* 👇 QUAN TRỌNG: Ép nền màu tối để chữ trắng luôn nổi bật */
     background: #1f1f2e !important;
     color: #fff !important;
+  }
+
+  /* ẨN THẺ PHIM GỐC TRÊN MOBILE KHI POPUP ACTIVE */
+  .movie-card-wrapper.active-mobile .movie-card-static,
+  .movie-card-wrapper.active-mobile .landscape-img-container,
+  .movie-card-wrapper.active-mobile .landscape-info {
+      opacity: 0 !important;
+      pointer-events: none !important;
   }
 
   /* Font chữ Popup nhỏ lại */
@@ -767,8 +902,47 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   }
 
   /* Ẩn bớt thông tin không cần thiết trên mobile cho gọn */
-  .movie-card-wrapper.active-mobile .popup-genres-row {
+  .movie-card-wrapper.active-mobile .popup-genres-row,
+  .movie-card-wrapper.active-mobile .popup-genres-text {
     display: none;
+  }
+
+  /* --- MOBILE: LANDSCAPE MOVIE CARD POPUP (16:9) --- */
+  .movie-card-landscape.active-mobile .movie-popup-nfx {
+      width: 210px !important; /* Thu nhỏ về gần 200px của portrait */
+      max-width: 95vw !important;
+  }
+  .movie-card-landscape.active-mobile .popup-header-img {
+      height: 100px !important; /* Thu gọn chiều cao ảnh header landscape cho cân đối */
+  }
+  .movie-card-landscape.active-mobile .popup-header-img {
+      height: 100px !important; /* Thu gọn đồng nhất 100px */
+  }
+  .movie-card-landscape.active-mobile .landscape-img-container {
+      height: 80px !important; /* Thu nhỏ container ảnh nền của thẻ gốc khi active */
+  }
+  .movie-card-landscape.active-mobile .popup-title-main {
+      font-size: 16px !important; 
+      color: #ffeb3b !important;
+      font-weight: 800 !important;
+      margin-bottom: 8px;
+      line-height: 1.3;
+  }
+  .movie-card-landscape.active-mobile .btn-play-pink {
+      font-size: 12px !important;
+      padding: 6px 12px !important;
+  }
+  .movie-card-landscape.active-mobile .btn-action-glass {
+      padding: 6px 10px !important;
+      font-size: 11px !important;
+  }
+  .movie-card-landscape.active-mobile .meta-badges-row {
+      gap: 5px !important;
+      margin-bottom: 8px !important;
+  }
+  .movie-card-landscape.active-mobile .badge-item {
+      font-size: 9px !important;
+      padding: 2px 6px !important;
   }
 
   /* --- POPUP PHIM THÔNG MINH (SMART POSITIONING) --- */
@@ -967,7 +1141,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
 
   /* 1. THẺ PHIM Ở NGOÀI (Nền trắng -> Chữ Đen) */
   [data-theme="light"] .card-title {
-    color: #ffeb3b !important; /* Màu đen tuyền cho dễ đọc */
+    color: #111 !important; /* Màu đen tuyền cho dễ đọc */
     font-weight: 700 !important;
   }
   [data-theme="light"] .card-meta {
@@ -980,41 +1154,52 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
     border: 1px solid #ddd !important;
   }
 
-  /* 2. POPUP CHI TIẾT (Luôn nền tối -> Chữ Vàng) */
-  .movie-card-wrapper.active-mobile .movie-popup-nfx {
-    background: #1f1f2e !important; /* Luôn giữ nền tối cho dịu mắt */
-    color: #fff !important;
-    border: 1px solid var(--accent-primary) !important;
+  /* 2. POPUP CHI TIẾT (Đồng bộ background sáng) */
+  [data-theme="light"] .movie-popup-nfx {
+    background: #ffffff !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
   }
 
-  /* 👇 TIÊU ĐỀ TRONG POPUP: MÀU VÀNG RỰC RỠ */
-  .movie-card-wrapper.active-mobile .popup-title-new {
-    color: #ffeb3b !important; /* Màu vàng chanh siêu nổi */
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); /* Bóng đen giúp chữ càng nổi hơn */
+  [data-theme="light"] .popup-body {
+    background: linear-gradient(to top, #ffffff 80%, transparent) !important;
+  }
+
+  /* 👇 TIÊU ĐỀ TRONG POPUP: CHỮ ĐEN DỄ ĐỌC */
+  [data-theme="light"] .popup-title-new,
+  [data-theme="light"] .popup-title-main {
+    color: #111 !important;
+    text-shadow: none !important;
     font-weight: 800 !important;
   }
 
-  /* Các thông số khác trong Popup (Năm, Thời lượng...) màu trắng sáng */
-  .movie-card-wrapper.active-mobile .popup-meta-row span {
-    color: #0fceeb !important;
+  /* Các thông số khác trong Popup (Năm, Thời lượng...) màu xám */
+  [data-theme="light"] .popup-meta-row span,
+  [data-theme="light"] .popup-genres-text,
+  [data-theme="light"] .popup-genres-row {
+    color: #555 !important;
   }
 
   /* Fix lại các nút tròn trong popup cho dễ nhìn */
-  .movie-card-wrapper.active-mobile .btn-popup-icon {
-    background: rgba(255, 255, 255, 0.15) !important;
-    color: #fff !important;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  [data-theme="light"] .btn-popup-icon {
+    background: rgba(0, 0, 0, 0.05) !important;
+    color: #333 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  }
+  [data-theme="light"] .btn-popup-icon:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+    color: #000 !important;
   }
   /* --- I. FIX MENU USER (V11 - TÁCH BIỆT SỐ DƯ VÀ NÚT NẠP) --- */
 
-  /* 1. KHUNG MENU (Nền Đen chuẩn Dark Mode) */
+  /* 1. KHUNG MENU (Sáng chuẩn Light Mode) */
   [data-theme="light"] .user-dropdown,
   [data-theme="light"] .profile-dropdown,
   [data-theme="light"] #userMenu,
   [data-theme="light"] #userDropdown {
-    background-color: #1f1f2e !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    color: #ffffff !important;
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
   }
 
   /* 2. [QUAN TRỌNG] RESET "SỐ DƯ 0 C" VỀ TRONG SUỐT */
@@ -1024,7 +1209,7 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   [data-theme="light"] .user-dropdown b,
   [data-theme="light"] .user-dropdown strong {
     background-color: transparent !important; /* Xóa nền trắng sai */
-    color: #ffffff !important; /* Chữ trắng */
+    color: var(--text-primary) !important; /* Chữ tự động theo theme */
     border: none !important;
     box-shadow: none !important;
   }
@@ -1032,18 +1217,19 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   /* 3. [QUAN TRỌNG] CHỈ TÔ NỀN TRẮNG CHO NÚT LINK "NẠP" */
   /* Chỉ tác động vào thẻ a (đường dẫn) hoặc button nhỏ */
   [data-theme="light"] .user-dropdown a:not(.btn-block):not(.w-full),
-  [data-theme="light"] .user-dropdown button.btn-sm {
-    background-color: #ffffff !important; /* 👉 Nền TRẮNG */
-    color: #0ea5e9 !important; /* 👉 Chữ XANH (Blue) */
+  [data-theme="light"] .user-dropdown button.btn-sm,
+  [data-theme="light"] .user-dropdown .btn-deposit {
+    background-color: var(--accent-primary) !important; /* 👉 Nền xanh */
+    color: #ffffff !important; /* 👉 Chữ Trắng */
 
-    border-radius: 50px !important;
+    border-radius: 20px !important; /* Nút tròn */
     padding: 4px 12px !important; /* Tăng padding chút cho đẹp */
     font-size: 11px !important;
     font-weight: 800 !important;
-    margin-left: 10px !important;
+    margin-left: auto !important;
     display: inline-block !important;
     text-decoration: none !important;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 2px 5px rgba(0, 122, 255, 0.2) !important;
     border: none !important;
     opacity: 1 !important;
     visibility: visible !important;
@@ -1052,9 +1238,9 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   /* 4. KHÔI PHỤC NÚT TO "NÂNG CẤP NGAY" (Màu đỏ) */
   [data-theme="light"] .user-dropdown button.w-full,
   [data-theme="light"] .user-dropdown .btn-block {
-    background: linear-gradient(135deg, #e50914 0%, #ff0055 100%) !important;
+    background: linear-gradient(135deg, #007aff 0%, #4db8ff 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3) !important;
     border: none !important;
   }
 
@@ -1150,9 +1336,9 @@ body, .page, .section, .hero, .movie-grid, .footer, main {
   font-weight: 800 !important;
 }
 
-/* 4. Đổi màu các Icon trong thống kê sang màu Đỏ cho đẹp */
+/* 4. Đổi màu các Icon trong thống kê sang màu Xanh cho đẹp */
 [data-theme="light"] .stats-box i {
-  color: #e50914 !important;
+  color: #4db8ff !important;
 }
 
 /* 5. Tiện thể sửa luôn màu tiêu đề Footer (Khám Phá, Hỗ Trợ...) sang đen */
@@ -1358,18 +1544,7 @@ body[data-theme="light"] .chat-msg .author {
   border: 1px solid #ccc !important;
 }
 
-/* --- FIX NÚT LOGIN BỊ ẨN NHẦM (QUAN TRỌNG) --- */
-/* Ép hiển thị lại nút Login ngay cả khi nó dính class .hidden */
-#authContainer:has(#userMenuTrigger:not(.hidden)) #loginBtn.hidden {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 30px !important;
-  height: 30px !important;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  position: static !important;
-}
+
 /* =================================================================
    MASTER FIX V9 (GRID SYSTEM - KHÔNG THỂ VỠ GIAO DIỆN)
    ================================================================= */
@@ -1856,13 +2031,7 @@ body[data-theme="light"] .chat-msg .author {
     }
   }
 
-  /* Fix nút Login */
-  #authContainer #loginBtn.hidden {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: static !important;
-  }
+
 }
 
 /* ============================================================
@@ -2054,5 +2223,22 @@ body[data-theme="light"] .chat-msg .author {
     overflow: hidden !important;
     background: #000 !important;
     z-index: 99998 !important;
+  }
+}
+
+/* --- FINAL FIX: PADDING CHO TRANG PHIM LẺ & PHIM BỘ (Tránh bị Menu che) --- */
+
+/* Desktop & Tablet (> 768px) */
+#singleMoviesPage, 
+#seriesMoviesPage {
+  padding-top: 160px !important; /* Menu 100px + 60px khoảng cách thoáng */
+  min-height: 100vh;
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 768px) {
+  #singleMoviesPage, 
+  #seriesMoviesPage {
+    padding-top: 110px !important; /* Menu 70px + 40px khoảng cách */
   }
 }

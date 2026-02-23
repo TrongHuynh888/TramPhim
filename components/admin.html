@@ -68,6 +68,31 @@
           <i class="fas fa-exchange-alt"></i>
           <span>Giao dịch</span>
         </div>
+        <div
+          class="admin-nav-item"
+          data-panel="notifications"
+          onclick="showAdminPanel('notifications')"
+        >
+          <i class="fas fa-bell" style="color: #4db8ff;"></i>
+          <span>Thông báo</span>
+        </div>
+        <div
+          class="admin-nav-item"
+          id="adminNavVipRequests"
+          data-panel="vipRequests"
+          onclick="showAdminPanel('vipRequests')"
+        >
+          <i class="fas fa-star" style="color: var(--warning-color, #ffc107);"></i>
+          <span>Yêu Cầu VIP</span>
+        </div>
+        <div
+          class="admin-nav-item"
+          data-panel="errorReports"
+          onclick="showAdminPanel('errorReports')"
+        >
+          <i class="fas fa-exclamation-triangle" style="color: #ff6b6b;"></i>
+          <span>Báo Lỗi</span>
+        </div>
       </nav>
     </aside>
 
@@ -221,16 +246,23 @@
         <div id="episodesManagement" class="hidden">
           <div class="flex-between mb-3">
             <h3>Danh sách tập</h3>
-            <button class="btn btn-primary" onclick="openEpisodeModal()">
-              <i class="fas fa-plus"></i> Thêm tập mới
-            </button>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-danger" onclick="deleteAllEpisodes()">
+                <i class="fas fa-trash-alt"></i> Xóa tất cả tập
+              </button>
+              <button class="btn btn-success" onclick="openImportEpisodesModal()">
+                <i class="fas fa-file-import"></i> Thêm nhiều tập (API)
+              </button>
+              <button class="btn btn-primary" onclick="openEpisodeModal()">
+                <i class="fas fa-plus"></i> Thêm tập mới
+              </button>
+            </div>
           </div>
 
           <table class="admin-table">
             <thead>
               <tr>
                 <th>Tập</th>
-                <th>Tiêu đề</th>
                 <th>YouTube ID</th>
                 <th>Thời lượng</th>
                 <th>Chất lượng</th>
@@ -433,6 +465,317 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Notifications Management Panel -->
+      <div class="admin-panel" id="notificationsPanel">
+        <div class="admin-panel-header">
+          <h2 class="admin-panel-title">Quản lý Thông báo</h2>
+        </div>
+
+        <!-- Form gửi thông báo mới -->
+        <div class="admin-notif-send-box">
+          <h3 style="margin-bottom: 15px; font-size: 1.1rem;"><i class="fas fa-paper-plane" style="color: #4db8ff;"></i> Gửi thông báo mới</h3>
+          <div class="form-group">
+            <label class="form-label">Tiêu đề thông báo</label>
+            <input type="text" class="form-input" id="adminNotifTitle" placeholder="VD: Phim mới cập nhật tuần này..." />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nội dung chi tiết</label>
+            <textarea class="form-textarea" id="adminNotifMessage" placeholder="Nhập nội dung thông báo gửi tới tất cả người dùng..." style="min-height: 80px;"></textarea>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+              <label class="form-label">Loại thông báo</label>
+              <select class="form-select" id="adminNotifType">
+                <option value="system">🔔 Hệ thống</option>
+                <option value="new_movie">🎬 Phim mới</option>
+                <option value="promotion">🎁 Khuyến mãi</option>
+                <option value="maintenance">🔧 Bảo trì</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">&nbsp;</label>
+              <button class="btn btn-primary" onclick="adminSendNotifToAll()" style="white-space: nowrap;">
+                <i class="fas fa-paper-plane"></i> Gửi tới tất cả Users
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lập lịch thông báo tự động -->
+        <div class="admin-notif-schedule-box">
+          <h3 style="margin-bottom: 15px; font-size: 1.1rem;">
+            <i class="fas fa-clock" style="color: #ffc107;"></i> Lập lịch gửi thông báo tự động
+          </h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Tiêu đề thông báo</label>
+              <input type="text" class="form-input" id="schedNotifTitle" placeholder="VD: Phim hot cuối tuần..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loại thông báo</label>
+              <select class="form-select" id="schedNotifType">
+                <option value="system">🔔 Hệ thống</option>
+                <option value="new_movie">🎬 Phim mới</option>
+                <option value="promotion">🎁 Khuyến mãi</option>
+                <option value="maintenance">🔧 Bảo trì</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nội dung chi tiết</label>
+            <textarea class="form-textarea" id="schedNotifMessage" placeholder="Nhập nội dung thông báo..." style="min-height: 60px;"></textarea>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">📅 Ngày gửi</label>
+              <input type="date" class="form-input" id="schedNotifDate" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">⏰ Giờ gửi</label>
+              <input type="time" class="form-input" id="schedNotifTime" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">🔄 Lặp lại</label>
+              <select class="form-select" id="schedNotifRepeat">
+                <option value="once">Một lần</option>
+                <option value="daily">Hàng ngày</option>
+                <option value="weekly">Hàng tuần</option>
+                <option value="monthly">Hàng tháng</option>
+              </select>
+            </div>
+            <div>
+              <button class="btn btn-warning" onclick="adminCreateScheduledNotif()" style="white-space: nowrap; height: 42px;">
+                <i class="fas fa-calendar-plus"></i> Tạo lịch
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bảng lịch hẹn đã tạo -->
+        <div style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-size: 1.05rem; margin: 0;">
+              <i class="fas fa-calendar-alt" style="color: #ffc107;"></i> Danh sách lịch hẹn
+              <span class="admin-notif-stat" style="margin-left: 8px; font-size: 0.8rem;">
+                <strong id="schedStatTotal">0</strong> lịch
+              </span>
+            </h3>
+            <button class="btn btn-danger btn-sm" onclick="adminDeleteAllScheduled()" style="font-size: 0.8rem;">
+              <i class="fas fa-trash-alt"></i> Xóa tất cả lịch
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Loại</th>
+                  <th>Tiêu đề</th>
+                  <th>Nội dung</th>
+                  <th>Ngày giờ gửi</th>
+                  <th>Lặp lại</th>
+                  <th>Trạng thái</th>
+                  <th style="min-width: 100px;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="adminScheduledTable">
+                <!-- Data sẽ được load động -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ngăn cách 2 phần -->
+        <hr style="border-color: rgba(255,255,255,0.08); margin: 30px 0 20px;">
+        <h3 style="font-size: 1.05rem; margin-bottom: 15px;">
+          <i class="fas fa-history" style="color: #4db8ff;"></i> Lịch sử thông báo đã gửi
+        </h3>
+
+        <!-- Bộ lọc -->
+        <div class="search-filter mb-3" style="margin-top: 25px;">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              class="form-input"
+              id="adminSearchNotif"
+              placeholder="Tìm tiêu đề, nội dung thông báo..."
+              oninput="filterAdminNotifications()"
+            />
+          </div>
+          <select class="form-select" id="adminFilterNotifType" onchange="filterAdminNotifications()">
+            <option value="">Tất cả loại</option>
+            <option value="system">🔔 Hệ thống</option>
+            <option value="new_movie">🎬 Phim mới</option>
+            <option value="promotion">🎁 Khuyến mãi</option>
+            <option value="maintenance">🔧 Bảo trì</option>
+            <option value="vip_approved">✅ VIP đã duyệt</option>
+            <option value="vip_request">⭐ Yêu cầu VIP</option>
+          </select>
+        </div>
+
+        <!-- Thống kê -->
+        <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+          <span class="admin-notif-stat"><i class="fas fa-list"></i> Tổng: <strong id="notifStatTotal">0</strong></span>
+          <span class="admin-notif-stat"><i class="fas fa-envelope"></i> Chưa đọc: <strong id="notifStatUnread" style="color: #ff6b6b;">0</strong></span>
+          <span class="admin-notif-stat"><i class="fas fa-envelope-open"></i> Đã đọc: <strong id="notifStatRead" style="color: #51cf66;">0</strong></span>
+        </div>
+
+        <!-- Nút hành động hàng loạt -->
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+          <button class="btn btn-danger btn-sm" onclick="adminDeleteAllNotifications()">
+            <i class="fas fa-trash-alt"></i> Xóa tất cả thông báo
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Loại</th>
+                <th>Tiêu đề</th>
+                <th>Nội dung</th>
+                <th>Người nhận</th>
+                <th>Trạng thái</th>
+                <th>Thời gian</th>
+                <th style="min-width: 80px;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="adminNotificationsTable">
+              <!-- Data sẽ được load động -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIP Requests Panel -->
+      <div class="admin-panel" id="vipRequestsPanel">
+        <div class="admin-panel-header">
+          <h2 class="admin-panel-title">Quản lý Yêu Cầu Nâng VIP</h2>
+        </div>
+
+        <div class="search-filter mb-3" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+          <div class="search-box" style="flex: 1; min-width: 250px;">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              class="form-input"
+              id="adminSearchVip"
+              placeholder="Tìm kiếm theo Email người dùng..."
+              oninput="filterAdminVipRequests()"
+            />
+          </div>
+          
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+             <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 0.9rem; margin-right: 5px;">Từ ngày:</label>
+                <input type="date" id="vipFilterStartDate" class="form-input" style="padding: 8px; width: auto;" onchange="filterAdminVipRequests()">
+             </div>
+             <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 0.9rem; margin-right: 5px;">Đến ngày:</label>
+                <input type="date" id="vipFilterEndDate" class="form-input" style="padding: 8px; width: auto;" onchange="filterAdminVipRequests()">
+             </div>
+             
+             <select class="form-select" id="vipSortOrder" onchange="filterAdminVipRequests()" style="min-width: 150px;">
+                <option value="desc">Mới nhất trước</option>
+                <option value="asc">Cũ nhất trước</option>
+             </select>
+
+             <select class="form-select" id="vipFilterStatus" onchange="filterAdminVipRequests()" style="min-width: 150px;">
+               <option value="pending">Đang chờ duyệt</option>
+               <option value="approved">Đã duyệt</option>
+               <option value="rejected">Đã từ chối</option>
+               <option value="">Tất cả</option>
+             </select>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Nội dung chuyển</th>
+                  <th>Gói Yêu Cầu</th>
+                  <th>Số Tiền</th>
+                  <th>Ảnh Biên Lai (Bill)</th>
+                  <th>Trạng thái</th>
+                  <th>Thời gian</th>
+                  <th style="min-width: 160px; text-align: center;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="adminVipRequestsTable">
+                <!-- Data sẽ được load động -->
+              </tbody>
+            </table>
+        </div>
+      </div>
+
+      <!-- Error Reports Panel -->
+      <div class="admin-panel" id="errorReportsPanel">
+        <div class="admin-panel-header">
+          <h2 class="admin-panel-title">Quản lý Báo Lỗi</h2>
+        </div>
+
+        <div class="search-filter mb-3" style="display: flex; gap: 15px; align-items: center;">
+          <div class="search-box" style="flex: 1;">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              class="form-input"
+              id="adminSearchError"
+              placeholder="Tìm kiếm theo tên phim, tập phim hoặc email người báo..."
+              oninput="filterErrorReports()"
+            />
+          </div>
+          <select class="form-select" id="errorFilterType" onchange="filterErrorReports()" style="min-width: 150px;">
+            <option value="">Tất cả loại lỗi</option>
+            <option value="load_slow">Video giật lag / Load chậm</option>
+            <option value="broken_link">Không xem được / Bị lỗi Play</option>
+            <option value="subtitle_error">Lỗi phụ đề</option>
+            <option value="audio_error">Lỗi âm thanh</option>
+            <option value="wrong_movie">Sai phim / Sai tập</option>
+            <option value="other">Lỗi khác</option>
+          </select>
+          <select class="form-select" id="errorFilterStatus" onchange="filterErrorReports()" style="min-width: 150px;">
+            <option value="pending">Chưa xử lý (Pending)</option>
+            <option value="resolved">Đã xử lý (Resolved)</option>
+            <option value="">Tất cả trạng thái</option>
+          </select>
+        </div>
+
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Người Báo</th>
+                <th>Phim & Tập</th>
+                <th>Phân Loại</th>
+                <th>Mô Tả Lỗi</th>
+                <th>Thời Gian</th>
+                <th>Trạng Thái</th>
+                <th style="min-width: 140px; text-align: center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="errorReportsTable">
+              <!-- Data sẽ được load động -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Xem Ảnh Bill Lớn (Dành cho Admin) -->
+<div class="modal-overlay" id="billViewportModal" style="z-index: 99999;">
+  <div class="modal" style="max-width: 800px; width: 95vw; background: transparent; box-shadow: none;">
+    <div style="text-align: right; margin-bottom: 10px;">
+      <button class="btn btn-danger" onclick="closeModal('billViewportModal')" style="border-radius: 50%; width: 40px; height: 40px; padding: 0;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 0; text-align: center;">
+      <img id="billViewportImage" src="" alt="Bill View" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
     </div>
   </div>
 </div>

@@ -1,3 +1,46 @@
+// ============================================
+// SAMPLE DATA (Dữ liệu mẫu khi chưa có Firebase)
+// ============================================
+const SAMPLE_CATEGORIES = [
+  { id: "action", name: "Hành động", slug: "hanh-dong" },
+  { id: "comedy", name: "Hài hước", slug: "hai-huoc" },
+  { id: "horror", name: "Kinh dị", slug: "kinh-di" },
+  { id: "romance", name: "Tình cảm", slug: "tinh-cam" },
+  { id: "scifi", name: "Khoa học viễn tưởng", slug: "khoa-hoc-vien-tuong" },
+  { id: "animation", name: "Hoạt hình", slug: "hoat-hinh" },
+  { id: "drama", name: "Chính kịch", slug: "chinh-kich" },
+  { id: "thriller", name: "Giật gân", slug: "giat-gan" },
+];
+
+const SAMPLE_COUNTRIES = [
+  { id: "vn", name: "Việt Nam", code: "VN" },
+  { id: "us", name: "Mỹ", code: "US" },
+  { id: "kr", name: "Hàn Quốc", code: "KR" },
+  { id: "jp", name: "Nhật Bản", code: "JP" },
+  { id: "cn", name: "Trung Quốc", code: "CN" },
+  { id: "th", name: "Thái Lan", code: "TH" },
+  { id: "uk", name: "Anh", code: "UK" },
+  { id: "fr", name: "Pháp", code: "FR" },
+];
+
+const SAMPLE_MOVIES = [
+  {
+    id: "movie1",
+    title: "Người Nhện: Du Hành Vũ Trụ",
+    posterUrl: "https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg",
+    description: "Miles Morales trở lại trong cuộc phiêu lưu xuyên đa vũ trụ...",
+    price: 15,
+    status: "public",
+    category: "Hoạt hình",
+    country: "Mỹ",
+    year: 2023,
+    views: 15420,
+    rating: 9.2,
+    episodes: [],
+    createdAt: new Date("2024-01-15"),
+  }
+];
+
 /**
  * Load dữ liệu ban đầu
  */
@@ -87,6 +130,7 @@ async function loadMovies() {
 
       if (!snapshot.empty) {
         allMovies = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        console.log(`DEBUG: Loaded ${allMovies.length} movies. Statuses:`, allMovies.map(m => m.status));
       } else {
         allMovies = SAMPLE_MOVIES;
         await initializeSampleMovies();
@@ -99,12 +143,17 @@ async function loadMovies() {
     renderFeaturedMovies();
     renderNewMovies();
     renderAllMovies();
+    renderCountrySections();
+    // Render banner slider phim nổi bật
+    renderBannerSlider();
   } catch (error) {
     console.error("Lỗi load movies:", error);
     allMovies = SAMPLE_MOVIES;
     renderFeaturedMovies();
     renderNewMovies();
     renderAllMovies();
+    renderCountrySections();
+    renderBannerSlider();
   }
 }
 

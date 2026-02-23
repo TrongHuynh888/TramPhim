@@ -325,8 +325,8 @@ function updateWalletUI() {
     walletBtn.classList.add("connected");
 
     // 👉 QUAN TRỌNG: Khi click vào nút đã kết nối -> Hỏi đăng xuất
-    walletBtn.onclick = function () {
-      if (confirm("Bạn có muốn ngắt kết nối ví không?")) {
+    walletBtn.onclick = async function () {
+      if (await customConfirm("Bạn có muốn ngắt kết nối ví không?", { title: "Ngắt kết nối ví", type: "warning", confirmText: "Ngắt kết nối" })) {
         disconnectWallet();
       }
     };

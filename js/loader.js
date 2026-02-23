@@ -36,16 +36,18 @@ async function initApp() {
     loadComponent("modals-container", "./components/modals.html"),
     loadComponent("admin-container", "./components/admin.html"),
     loadComponent("movieIntroPage", "./components/intro.html"),
+    loadComponent("seriesMoviesPage", "./components/series-movies.html"),
+    loadComponent("singleMoviesPage", "./components/single-movies.html"),
   ]);
 
   console.log("🎉 Giao diện đã tải xong! Khởi động logic...");
 
   // 👇 2. QUAN TRỌNG: PHẢI CÓ DÒNG NÀY ĐỂ CHẠY WEB 👇
-  if (typeof window.startMovieChainApp === "function") {
-    window.startMovieChainApp();
+  if (typeof window.startTramPhimApp === "function") {
+    window.startTramPhimApp();
   } else {
     console.error(
-      "❌ Lỗi: Không tìm thấy hàm startMovieChainApp trong main.js",
+      "❌ Lỗi: Không tìm thấy hàm startTramPhimApp trong main.js",
     );
   }
 }

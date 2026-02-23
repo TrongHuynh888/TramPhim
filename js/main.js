@@ -1,22 +1,63 @@
 // ============================================
-// CẬP NHẬT HÀM KHỞI CHẠY (startMovieChainApp)
+// CẬP NHẬT HÀM KHỞI CHẠY (startTramPhimApp)
 // ============================================
-window.startMovieChainApp = async () => {
-  console.log("🎬 MovieChain Starting...");
+window.startTramPhimApp = async () => {
+  console.log("🎬 Trạm Phim Starting...");
 
   auth.onAuthStateChanged(handleAuthStateChange);
   await loadInitialData();
 
   initializeUI();
+  
+  // Custom: Check URL Hash for deep linking (Fix lỗi F5)
+  const hash = window.location.hash;
+  if (hash) {
+      console.log("🔗 Deep linking from Hash:", hash);
+      handleHashRouting(hash);
+  }
+ 
   initializeRatingStars();
   loadTheme();
   initNavbarScroll();
-
+  initSmartPopupPositioning(); // Call new function
+ 
   // 👇 GỌI HÀM THỐNG KÊ MỚI TẠI ĐÂY 👇
   initVisitorStats();
-
+ 
   console.log("✅ App Ready!");
 };
+
+/**
+ * Hàm xử lý điều hướng dựa trên Hash
+ */
+function handleHashRouting(hash) {
+    if (!hash || hash === '#' || hash === '#/') {
+        showPage('home', false);
+        return;
+    }
+
+    // Phân tích hash (VD: #/watch/slug-id hoặc #/movies)
+    const parts = hash.replace(/^#\/?/, '').split('/');
+    const page = parts[0];
+    const slugWithId = parts[1];
+
+    if ((page === 'watch' || page === 'intro') && slugWithId) {
+        const movieId = slugWithId.split('-').pop(); // Lấy ID ở cuối chuỗi
+        if (movieId) {
+            if (page === 'watch' && typeof viewMovieDetail === 'function') {
+                setTimeout(() => viewMovieDetail(movieId, false), 100);
+            } else if (page === 'intro' && typeof viewMovieIntro === 'function') {
+                setTimeout(() => viewMovieIntro(movieId, false), 100);
+            }
+            return;
+        }
+    }
+
+    // Xử lý các trang thông thường (movies, categories...)
+    if (page) {
+        setTimeout(() => showPage(page, false), 100);
+    }
+}
 
 // ============================================
 // HÀM THỐNG KÊ REALTIME (NGƯỜI THẬT)
@@ -109,34 +150,75 @@ function initVisitorStats() {
     });
   }
 }
+
 // ============================================
-// XỬ LÝ NAVIGATE BACK (Browser Back Button)
+// XỬ LÝ NAVIGATE BACK/FORWARD (Browser Buttons)
 // ============================================
 window.addEventListener('popstate', function(event) {
-    console.log("📍 Popstate triggered:", document.location.pathname, event.state);
-
-    if (event.state) {
-        const page = event.state.page;
-        const movieId = event.state.movieId;
-
-        if (page === 'intro' && movieId) {
-            // Quay lại trang Intro (không push state nữa)
-            if (typeof viewMovieIntro === 'function') {
-                viewMovieIntro(movieId, false);
-            }
-        } else if (page === 'watch' && movieId) {
-             if (typeof viewMovieDetail === 'function') {
-                viewMovieDetail(movieId);
-            }
-        } else if (page === 'home') {
-             showPage('home');
-        } else if (page) {
-             // Các trang khác (movies, categories...)
-             showPage(page);
-        }
+    console.log("📍 Popstate triggered:", window.location.hash, event.state);
+    
+    if (window.location.hash) {
+        handleHashRouting(window.location.hash);
     } else {
-        // Fallback về trang chủ
-        console.log("📍 No state found, going Home fallback");
-        showPage('home');
+        showPage('home', false);
+    }
+});
+
+/* ============================================
+   HÀM XỬ LÝ VỊ TRÍ POPUP THÔNG MINH (CHO PC & ALL)
+   ============================================ */
+function initSmartPopupPositioning() {
+  document.addEventListener("mouseover", function (e) {
+    const wrapper = e.target.closest(".movie-card-wrapper");
+    if (!wrapper) return;
+
+    const popup = wrapper.querySelector(".movie-popup-nfx");
+    if (!popup) return;
+
+    // Lấy kích thước wrapper & màn hình
+    const rect = wrapper.getBoundingClientRect();
+    const screenWidth = window.innerWidth;
+    
+    // Reset position
+    wrapper.classList.remove("popup-align-left", "popup-align-right");
+
+    // Logic kiểm tra mép màn hình
+    // Nếu mép trái < 150px (dư để popup mở sang phải không bị che)
+    if (rect.left < 150) {
+      wrapper.classList.add("popup-align-left");
+    } 
+    // Nếu mép phải sát lề ( > width - 150px)
+    else if (rect.right > screenWidth - 150) {
+      wrapper.classList.add("popup-align-right");
+    }
+  });
+}
+
+// ============================================
+// HÀM XỬ LÝ DROPDOWN THÔNG BÁO VIP
+// ============================================
+window.toggleVipNotificationDropdown = function(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById("vipNotificationDropdown");
+    const userDropdown = document.getElementById("userDropdown");
+    
+    // Đóng user dropdown nếu đang mở
+    if (userDropdown && userDropdown.classList.contains("active")) {
+        userDropdown.classList.remove("active");
+    }
+    
+    dropdown.classList.toggle("hidden");
+};
+
+// Đóng dropdown thông báo khi click ngoài
+document.addEventListener("click", function (event) {
+    const dropdown = document.getElementById("vipNotificationDropdown");
+    const notifBtn = document.getElementById("notificationBtn");
+    
+    // Nếu click ra ngoài dropdown VÀ ngoài cái nút chuông
+    if (dropdown && notifBtn && !dropdown.classList.contains("hidden")) {
+        if (!dropdown.contains(event.target) && !notifBtn.contains(event.target)) {
+            dropdown.classList.add("hidden");
+        }
     }
 });

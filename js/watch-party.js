@@ -27,7 +27,7 @@ let localMutedPeers = new Set();
 
 // API KEY CỦA BẠN (Đã điền sẵn)
 const METERED_API_KEY = "XdPnoCY8k0fnWLdeEczCipMdUx8zgEbQHbdbjyKMPVgNNQYk";
-const APP_NAME = "moviechain";
+const APP_NAME = "TramPhim";
 
 // ==========================================
 // 1. MODULE LOADER
@@ -136,11 +136,13 @@ async function loadRooms() {
 async function deleteRoom(roomId, hostId) {
   if (!currentUser) return;
   const isOwner = currentUser.uid === hostId;
-  if (!isOwner && !isAdmin) {
+  
+  // 👇 FIX: Admin có quyền xóa mọi phòng
+  if (!isOwner && (typeof isAdmin === 'undefined' || !isAdmin)) {
     showNotification("Bạn không có quyền xóa phòng này!", "error");
     return;
   }
-  if (!confirm("⚠️ BẠN CÓ CHẮC MUỐN GIẢI TÁN PHÒNG NÀY?")) return;
+  if (!await customConfirm("⚠️ BẠN CÓ CHẮC MUỐN GIẢI TÁN PHÒNG NÀY?", { title: "Giải tán phòng", type: "danger", confirmText: "Giải tán" })) return;
   try {
     showLoading(true);
     await db.collection("watchRooms").doc(roomId).delete();
@@ -273,21 +275,21 @@ async function joinRoom(roomId, type, passwordInput = null) {
     const doc = await roomRef.get();
     if (!doc.exists) {
       showLoading(false);
-      alert("Phòng không tồn tại!");
+      await customAlert("Phòng không tồn tại!", { type: "warning" });
       return;
     }
 
     const data = doc.data();
     if (data.bannedUsers?.includes(currentUser.uid)) {
       showLoading(false);
-      alert("BẠN ĐÃ BỊ CẤM!");
+      await customAlert("BẠN ĐÃ BỊ CẤM!", { type: "danger" });
       return;
     }
     if (data.type === "private" && currentUser.uid !== data.hostId) {
-      if (!passwordInput) passwordInput = prompt("🔒 Nhập mật khẩu:");
+      if (!passwordInput) passwordInput = await customPrompt("🔒 Nhập mật khẩu:", { title: "Phòng riêng tư" });
       if (passwordInput !== data.password) {
         showLoading(false);
-        alert("Sai mật khẩu!");
+        await customAlert("Sai mật khẩu!", { type: "danger" });
         return;
       }
     }
@@ -367,7 +369,7 @@ async function setupMemberAndChat(roomId, roomRef) {
     if (!myDoc && currentRoomId) {
       console.warn("🚫 Phát hiện bị Kick khỏi phòng!");
       leaveRoom(true);
-      alert("⚠️ BẠN ĐÃ BỊ MỜI RA KHỎI PHÒNG!");
+      customAlert("⚠️ BẠN ĐÃ BỊ MỜI RA KHỎI PHÒNG!", { type: "danger" });
       return;
     }
 
@@ -441,10 +443,11 @@ async function setupMemberAndChat(roomId, roomRef) {
 
 function updateRoomUI(data) {
   document.getElementById("roomTitleDisplay").textContent = data.name;
-  isHost = currentUser.uid === data.hostId;
-  document.getElementById("hostControls").style.display = isHost
-    ? "flex"
-    : "none";
+  
+  // 👇 FIX: Admin cũng có quyền điều khiển như chủ phòng
+  isHost = (currentUser.uid === data.hostId) || (typeof isAdmin !== 'undefined' && isAdmin);
+  
+
   
   // Khởi tạo Hybrid Player (YouTube hoặc HTML5)
   // Chỉ init nếu chưa có player HOẶC loại video thay đổi
@@ -1065,6 +1068,13 @@ function onPlayerReady() {
 }
 
 const onPlayerStateChange = (event) => {
+  // Update UI (Local) - Cho tất cả mọi người
+  if (event.data === 1) updatePlayButtonState("playing");
+  else if (event.data === 2) updatePlayButtonState("paused");
+  else if (event.data === 3) updatePlayButtonState("loading"); // Buffering
+  else if (event.data === 0) updatePlayButtonState("paused"); // Ended
+
+  // Sync Logic (Host only)
   if (!isHost) return;
   if (event.data === 1) updateRoomState("playing", player.getCurrentTime());
   else if (event.data === 2) updateRoomState("paused", player.getCurrentTime());
@@ -1214,12 +1224,13 @@ function sendSystemMessage(t) {
   });
 }
 function kickUser(uid, name) {
-  if (!confirm("KICK " + name + "?")) return;
+  customConfirm("KICK " + name + "?", { title: "Kick thành viên", type: "warning", confirmText: "Kick" }).then(ok => { if (!ok) return;
   db.collection("watchRooms")
     .doc(currentRoomId)
     .collection("members")
     .doc(uid)
     .delete();
+  });
 }
 
 // --- GLOBAL CLICK LISTENER: FORCE WAKE UP AUDIO ---
@@ -1430,7 +1441,7 @@ document.head.appendChild(styleAdmin);
 // 1. Hàm Kick (Đuổi thành viên) - Trước đó bạn bị thiếu hàm này
 window.kickUser = async function (uid, name) {
   if (!currentRoomId) return;
-  if (!confirm(`Bạn có chắc muốn mời ${name} ra khỏi phòng?`)) return;
+  if (!await customConfirm(`Bạn có chắc muốn mời ${name} ra khỏi phòng?`, { title: "Kick thành viên", type: "warning", confirmText: "Mời ra" })) return;
 
   try {
     // 1. Gửi thông báo lên kênh Chat trước
@@ -1535,7 +1546,7 @@ window.syncSeek = function (seconds) {
 
 // Hàm cập nhật trạng thái phòng lên Firebase (Hỗ trợ cho Player)
 async function updateRoomState(status, time) {
-  if (!currentRoomId) return;
+  if (!currentRoomId || currentRoomId === "undefined" || currentRoomId === "") return;
   // Debounce: Tránh gửi quá nhiều request cùng lúc
   if (Date.now() - lastSyncTime < 500) return;
   lastSyncTime = Date.now();
@@ -1555,6 +1566,26 @@ async function updateRoomState(status, time) {
 // WATCH PARTY - CUSTOM VIDEO CONTROLS LOGIC
 // ==========================================
 let wpHideTimer = null;
+
+// Helper: Cập nhật trạng thái nút Play (Load/Play/Pause)
+function updatePlayButtonState(state) {
+    const centerBtn = document.getElementById("wpPlayBtn");
+    const centerIcon = document.getElementById("wpPlayIcon");
+    const bottomBtn = document.getElementById("wpPlayPauseBtn");
+    const bottomIcon = bottomBtn ? bottomBtn.querySelector("i") : null;
+
+    if (state === "loading") {
+        if (centerIcon) centerIcon.className = "fas fa-spinner wp-spinner"; // Thêm class xoay
+        if (bottomIcon) bottomIcon.className = "fas fa-spinner wp-spinner";
+    } else if (state === "playing") {
+        if (centerIcon) centerIcon.className = "fas fa-pause";
+        if (bottomIcon) bottomIcon.className = "fas fa-pause";
+    } else {
+        // Paused or default
+        if (centerIcon) centerIcon.className = "fas fa-play";
+        if (bottomIcon) bottomIcon.className = "fas fa-play";
+    }
+}
 
 function initWpCustomControls(video) {
     const container = document.getElementById("wpVideoContainer");
@@ -1586,6 +1617,16 @@ function initWpCustomControls(video) {
             if (bufBar) bufBar.style.width = `${buf}%`;
         }
     });
+
+    // Loading State
+    video.addEventListener("waiting", () => updatePlayButtonState("loading"));
+    video.addEventListener("playing", () => updatePlayButtonState("playing"));
+    video.addEventListener("pause", () => updatePlayButtonState("paused"));
+    video.addEventListener("canplay", () => {
+        if (video.paused) updatePlayButtonState("paused");
+        else updatePlayButtonState("playing");
+    });
+    video.addEventListener("ended", () => updatePlayButtonState("paused"));
 
     // Seek (Host only via slider)
     const slider = document.getElementById("wpProgressSlider");

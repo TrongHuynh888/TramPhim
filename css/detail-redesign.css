@@ -1,0 +1,772 @@
+/* =========================================
+   MOVIE DETAIL REDESIGN STYLES
+   ========================================= */
+
+:root {
+    --toolbar-bg: rgba(20, 20, 30, 0.95);
+    --switch-on: #4db8ff;
+    --switch-off: #333;
+}
+
+.movie-detail-redesign {
+    display: none; /* Mặc định ẩn để không đè lên trang chủ */
+    flex-direction: column;
+    gap: 0;
+    background: var(--bg-primary);
+    min-height: 100vh;
+    padding-top: 110px !important; /* Đẩy xuống thêm để hiện rõ tiêu đề phim */
+    margin-top: 0 !important;
+}
+
+/* CHỈ HIỂN THỊ KHI ĐƯỢC KÍCH HOẠT (SPA) */
+.movie-detail-redesign.active {
+    display: flex !important;
+}
+
+/* Ép nền body màu đen khi bật rạp phim để lấp hoàn toàn khung hở */
+body.cinema-mode {
+    background: #000 !important;
+}
+
+/* Xóa padding khi ở chế độ rạp phim để 100vh không bị đẩy xuống */
+body.cinema-mode .movie-detail-redesign,
+[data-theme="light"] body.cinema-mode .movie-detail-redesign {
+    padding-top: 0 !important;
+    background: #000 !important; /* Đen tuyệt đối cho rạp phim */
+}
+
+/* --- TOP BAR --- */
+.detail-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 8px 20px; /* Thu hẹp thanh tiêu đề */
+    background: rgba(0,0,0,0.5); /* Nền tối nhẹ để nổi bật trên mọi background */
+    position: relative;
+    z-index: 100;
+}
+
+.btn-back-square {
+    width: 35px;
+    height: 35px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-back-square:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    transform: scale(1.1);
+}
+
+.detail-page-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* --- PLAYER AREA --- */
+.player-section {
+    position: relative;
+    width: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: visible; /* Cho phép floating reaction bay ra ngoài nếu cần */
+    min-height: 200px;
+}
+
+.video-container {
+    width: 85%; /* Giảm kích thước khung video trên PC */
+    margin: 0 auto; /* Căn giữa */
+    aspect-ratio: 16/9;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+/* Khi chế độ Reaction ON -> Co khung video lại thêm một chút để nhường chỗ cho sidebar */
+.player-section.reaction-active .video-container {
+    width: 80%;
+}
+
+@media (max-width: 1200px) {
+    .video-container {
+        width: 92%;
+    }
+    .player-section.reaction-active .video-container {
+        width: 88%;
+    }
+}
+
+@media (max-width: 768px) {
+    .video-container {
+        width: 100%;
+        border-radius: 0;
+    }
+    .player-section.reaction-active .video-container {
+        width: 90%; /* Vẫn co lại để hiện reaction trên mobile */
+    }
+}
+
+@media (max-width: 768px) {
+    .player-section {
+        height: auto;
+        min-height: auto;
+    }
+}
+
+/* --- REACTION SIDEBAR --- */
+.reaction-sidebar {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(15px);
+    padding: 12px 8px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.15);
+    z-index: 200; /* Đảm bảo nằm trên mọi lớp của video-container */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+}
+
+.reaction-sidebar.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(50px, -50%);
+}
+
+.reaction-btn {
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    user-select: none;
+    padding: 5px;
+    display: inline-block;
+}
+
+.reaction-btn:hover {
+    transform: scale(1.3);
+}
+
+/* --- BOTTOM TOOLBAR --- */
+.detail-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 25px;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* OVERRIDE LIGHT THEME CHO TOOLBAR DƯỚI VIDEO */
+[data-theme="light"] .detail-toolbar {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .btn-toolbar {
+    color: var(--text-muted);
+}
+
+[data-theme="light"] .btn-toolbar:hover {
+    color: var(--accent-primary);
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+}
+
+[data-theme="light"] .btn-toolbar.active {
+    color: var(--error);
+}
+
+[data-theme="light"] .switch-item {
+    color: var(--text-muted);
+}
+
+[data-theme="light"] .badge-switch {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn-toolbar {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 5px 10px;
+}
+
+.btn-toolbar:hover {
+    color: #fff;
+}
+
+.btn-toolbar i {
+    font-size: 16px;
+}
+
+.btn-toolbar.active {
+    color: var(--error);
+}
+
+/* Switches */
+.switch-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.badge-switch {
+    background: #222;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.badge-switch.on {
+    color: var(--accent-primary);
+    background: rgba(77, 184, 255, 0.1);
+}
+
+.badge-switch.off {
+    color: #888;
+}
+
+/* --- FLOATING REACTIONS --- */
+.floating-reaction {
+    position: absolute;
+    font-size: 24px;
+    z-index: 9999;
+    pointer-events: none;
+    animation: floatingUp 3s ease-out forwards;
+}
+
+@keyframes floatingUp {
+    0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(-20px) scale(1.2);
+    }
+    100% {
+        transform: translateY(-200px) scale(1);
+        opacity: 0;
+    }
+}
+
+/* --- ALBUM MODAL & ITEMS --- */
+.album-item:hover {
+    background: rgba(255,255,255,0.1) !important;
+}
+
+.album-item i.fas.fa-check-circle {
+    animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+}
+
+/* --- CINEMA MODE --- */
+body.cinema-mode #navbar,
+body.cinema-mode footer {
+    opacity: 0 !important; /* Ẩn hoàn toàn để không gây xao nhãng */
+    pointer-events: none;
+    transition: opacity 0.5s;
+}
+
+/* Ẩn các phần gây xao nhãng trong chế độ Rạp phim */
+body.cinema-mode .movie-info-redesign,
+body.cinema-mode .episodes-section,
+body.cinema-mode .comments-section,
+body.cinema-mode #versionContainer,
+body.cinema-mode #relatedPartsContainer,
+body.cinema-mode .reaction-sidebar {
+    display: none !important;
+}
+
+body.cinema-mode .detail-top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10002;
+    opacity: 0 !important; /* Mặc định ẩn trong rạp phim */
+    pointer-events: none !important;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent) !important;
+    display: flex !important;
+    transition: all 0.5s ease-in-out !important; /* Hiệu ứng mượt mà */
+}
+
+body.cinema-mode .detail-toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    opacity: 0 !important; /* Mặc định ẩn trong rạp phim */
+    pointer-events: none !important;
+    z-index: 10001;
+    background: rgba(15, 15, 25, 0.98);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 0 25px;
+    transition: all 0.5s ease-in-out !important; /* Hiệu ứng mượt mà */
+}
+
+body.cinema-mode .player-section,
+[data-theme="light"] body.cinema-mode .player-section {
+    height: calc(100vh - 120px); /* Dành khoảng trống 50px top + 70px bottom toolbar */
+    max-height: none;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0; /* Giảm padding để video to hơn */
+    margin-top: 50px; /* Đẩy xuống để không bị thanh top bar che khi hiện */
+    background: #000 !important;
+}
+
+body.cinema-mode .video-container {
+    height: auto !important;
+    width: auto !important;
+    max-width: 93% !important; /* Tăng từ 85% lên 93% theo yêu cầu */
+    max-height: 93% !important; /* Tăng từ 85% lên 93% theo yêu cầu */
+    aspect-ratio: 16 / 9;
+    border-radius: 0 !important; /* Reset cho rạp phim */
+    box-shadow: none !important; /* Reset cho rạp phim */
+}
+
+body.cinema-mode #videoPlayer,
+body.cinema-mode #html5Player {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain;
+}
+
+/* Hiện lại khi có class .controls-visible (do JS điều khiển) */
+body.cinema-mode.controls-visible .detail-top-bar,
+body.cinema-mode.controls-visible .detail-toolbar {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 1024px) {
+    .detail-toolbar {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 600px) {
+    .toolbar-group {
+        width: 100%;
+        justify-content: space-around;
+        flex-wrap: wrap;
+    }
+    .detail-page-title {
+        font-size: 0.9rem;
+    }
+    .reaction-sidebar {
+        right: 10px;
+        padding: 5px;
+        gap: 5px;
+    }
+    .reaction-btn {
+        font-size: 16px;
+    }
+}
+
+/* --- MY ALBUMS VIEW --- */
+.my-album-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: 0.3s;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.my-album-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255,255,255,0.1) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+.my-album-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: 0.5s;
+}
+
+.my-album-card:hover img {
+    transform: scale(1.1);
+}
+
+.album-movie-item:hover {
+    transform: scale(1.05);
+}
+
+.album-movie-item img {
+    transition: 0.3s;
+}
+
+.album-movie-item:hover img {
+    box-shadow: 0 0 15px var(--accent-primary);
+}
+
+/* --- BACK BUTTON ALBUM --- */
+.btn-back-album {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.btn-back-album:hover {
+    background: var(--accent-primary);
+    color: #000 !important;
+    transform: translateX(-3px);
+}
+
+.btn-back-album i {
+    font-size: 14px;
+}
+/* --- MOVIE INFO REDESIGN SECTION --- */
+.movie-info-redesign {
+    margin-top: 30px; /* Thêm khoảng cách với toolbar */
+    margin-bottom: 40px;
+    padding: 0 40px; /* Thụt toàn bộ phần này vào 2 bên */
+    animation: fadeInUp 0.5s ease;
+}
+
+.info-layout {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 25px; /* Giảm gap một chút cho cân đối với poster nhỏ */
+    align-items: flex-start;
+}
+
+.info-poster-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2/3;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.info-poster {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.info-price-tag {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+.info-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.info-title {
+    font-size: 1.7rem; /* Giảm cỡ chữ lại cho phù hợp poster nhỏ */
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.2;
+    background: linear-gradient(to right, #fff, #aaa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.info-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.meta-item.year {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 10px;
+    border-radius: 4px;
+}
+
+.info-categories {
+    font-size: 15px;
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.info-description-box {
+    background: rgba(255,255,255,0.03);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+    position: relative;
+}
+
+.info-description-short {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: #ccc;
+    margin: 0 0 10px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* OVERRIDE LIGHT THEME CHO PHẦN THÔNG TIN PHIM */
+[data-theme="light"] .info-title {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .info-description-short {
+    color: var(--text-secondary);
+}
+
+[data-theme="light"] .info-description-box {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: var(--border-color);
+}
+
+[data-theme="light"] .meta-item.year {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-primary);
+}
+
+.info-link {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: 0.2s;
+}
+
+.info-link:hover {
+    gap: 10px;
+    filter: brightness(1.2);
+}
+
+/* Payment Action */
+.info-payment-action {
+    margin-top: 10px;
+    animation: fadeIn 0.5s ease;
+}
+
+.btn-buy-ticket {
+    background: linear-gradient(135deg, #E50914 0%, #ff4b2b 100%);
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.3);
+}
+
+.btn-buy-ticket:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(229, 9, 20, 0.5);
+    filter: brightness(1.1);
+}
+
+.payment-hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#versionContainer,
+#relatedPartsContainer {
+    padding: 0 40px !important;
+}
+
+/* --- EPISODES LIST REDESIGN --- */
+.episodes-section {
+    background: rgba(255,255,255,0.02);
+    padding: 30px;
+    margin: 20px 40px 0 40px; /* Thêm lề 2 bên (40px) để đồng bộ với phần trên */
+    border-radius: 16px;
+}
+
+.episodes-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 15px;
+}
+
+.episode-item {
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.episode-item:hover {
+    background: #252545;
+    border-color: var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.episode-item.active {
+    background: linear-gradient(135deg, #ff0080, #ff8c00);
+    border: none;
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.4);
+}
+
+.episode-item.active .ep-number,
+.episode-item.active .ep-label {
+    color: #fff;
+}
+
+.ep-number {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.ep-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 900px) {
+    .info-layout {
+        grid-template-columns: 180px 1fr;
+        gap: 20px;
+    }
+    .info-title {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .info-layout {
+        grid-template-columns: 1fr;
+    }
+    .info-poster-wrapper {
+        max-width: 200px;
+        margin: 0 auto;
+    }
+    .info-content-wrapper {
+        text-align: center;
+        align-items: center;
+    }
+    .info-meta {
+        justify-content: center;
+    }
+    .episodes-list {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

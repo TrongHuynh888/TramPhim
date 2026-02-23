@@ -29,6 +29,10 @@
         </div>
         <div class="modal-body">
         <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+            <div class="auth-form-header text-center mb-4">
+                <h2 style="font-size: 24px; font-weight: 700; color: #4db8ff; margin-bottom: 8px;">Chào mừng trở lại</h2>
+                <p class="text-muted" style="font-size: 14px; margin-bottom: 20px;">Vui lòng đăng nhập để tiếp tục dịch vụ</p>
+            </div>
             <div class="form-group">
                 <label class="form-label">Email</label>
                 <input type="email" class="form-input" id="loginEmail" placeholder="Nhập email..." required />
@@ -49,6 +53,10 @@
         </form>
 
         <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+            <div class="auth-form-header text-center mb-4">
+                <h2 style="font-size: 24px; font-weight: 700; color: #4db8ff; margin-bottom: 8px;">Tạo tài khoản</h2>
+                <p class="text-muted" style="font-size: 14px; margin-bottom: 20px;">Đăng ký để trải nghiệm xem phim không giới hạn</p>
+            </div>
             <div class="form-group">
                 <label class="form-label">Tên hiển thị</label>
                 <input type="text" class="form-input" id="registerName" placeholder="Tên của bạn" required />
@@ -112,6 +120,10 @@
             id="registerForm"
             onsubmit="handleRegister(event)"
           >
+            <div class="auth-form-header text-center mb-4">
+                <h2 style="font-size: 24px; font-weight: 700; color: #4db8ff; margin-bottom: 8px;">Tạo tài khoản</h2>
+                <p class="text-muted" style="font-size: 14px; margin-bottom: 20px;">Đăng ký để trải nghiệm xem phim không giới hạn</p>
+            </div>
             <div class="form-group">
               <label class="form-label">Link Ảnh đại diện (Avatar)</label>
               <input
@@ -191,6 +203,23 @@
           </button>
         </div>
         <div class="modal-body">
+          <!-- BỔ SUNG: KHUNG THÊM PHIM TỪ API BÊN NGOÀI -->
+          <div class="api-import-box" style="background: rgba(229, 9, 20, 0.1); border: 1px dashed var(--accent-primary); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+              <label class="form-label" style="color: var(--accent-primary); display: flex; align-items: center; gap: 8px;">
+                  <i class="fas fa-bolt"></i> Thêm nhanh từ OPhim1 API (Tùy chọn)
+              </label>
+              <div style="display: flex; gap: 10px;">
+                  <input type="url" class="form-input" id="apiCloneUrl" placeholder="Ví dụ: https://ophim1.com/v1/api/phim/venom-kem-chung-song-khao" style="flex: 1;">
+                  <button type="button" class="btn btn-primary" onclick="fetchMovieFromAPI()" id="btnFetchApi" style="white-space: nowrap;">
+                      <i class="fas fa-cloud-download-alt"></i> Lấy Data
+                  </button>
+              </div>
+              <small class="text-muted" style="display: block; margin-top: 8px; font-size: 0.8rem;">
+                  * Dán link API phim vào đây, hệ thống sẽ tự động bóc tách tên, ảnh, số tập... dán vào Form bên dưới.
+              </small>
+          </div>
+          <!-- END BỔ SUNG -->
+
           <form id="movieForm" onsubmit="handleMovieSubmit(event)">
             <input type="hidden" id="movieId" />
             <div class="form-group">
@@ -207,7 +236,7 @@
                 <label class="form-label">Tên Phần / Mùa</label>
                 <div style="display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items: center;">
                     <select class="form-select" id="moviePartType" onchange="updateMoviePartUI()">
-                        <option value="">(Trống)</option>
+                        <option value="" selected>(Trống)</option>
                         <option value="Phần">Phần</option>
                         <option value="Season">Season</option>
                         <option value="Chapter">Chapter</option>
@@ -231,50 +260,90 @@
             </div>
             <div class="form-group">
               <label class="form-label">Link ảnh Poster *</label>
-              <input
-                type="url"
-                class="form-input"
-                id="moviePoster"
-                placeholder="/images/MoviePoster.jpg"
-                required
-              />
+              <div class="input-with-action" style="display: flex; gap: 8px;">
+                <input
+                  type="url"
+                  class="form-input"
+                  id="moviePoster"
+                  placeholder="/images/MoviePoster.jpg"
+                  style="flex: 1;"
+                  required
+                />
+                <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('posterInput').click()" style="white-space: nowrap;">
+                  <i class="fas fa-upload"></i> Tải lên
+                </button>
+                <input type="file" id="posterInput" accept="image/*" style="display: none;" onchange="uploadMovieImage(this, 'moviePoster', 'posterPreview')">
+              </div>
+              <div id="posterPreview" class="image-upload-preview" style="margin-top: 8px; display: none;">
+                <img src="" style="max-height: 150px; border-radius: 4px; border: 1px solid var(--border-color);">
+              </div>
             </div>
             <!-- Các trường mới cho Trang Giới thiệu -->
             <div class="form-group">
               <label class="form-label">Link ảnh nền (Background)</label>
-              <input
-                type="url"
-                class="form-input"
-                id="movieBackground"
-                placeholder="https://example.com/background.jpg (Dùng cho trang giới thiệu)"
-              />
+              <div class="input-with-action" style="display: flex; gap: 8px;">
+                <input
+                  type="url"
+                  class="form-input"
+                  id="movieBackground"
+                  placeholder="Link ảnh nền..."
+                  style="flex: 1;"
+                />
+                <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('bgInput').click()" style="white-space: nowrap;">
+                  <i class="fas fa-upload"></i> Tải lên
+                </button>
+                <input type="file" id="bgInput" accept="image/*" style="display: none;" onchange="uploadMovieImage(this, 'movieBackground', 'bgPreview')">
+              </div>
+              <div id="bgPreview" class="image-upload-preview" style="margin-top: 8px; display: none;">
+                <img src="" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid var(--border-color);">
+              </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Diễn viên (Cast)</label>
+                <label class="form-label">Diễn viên (Cast)</label>
               <input
                 type="text"
                 class="form-input"
                 id="movieCast"
-                placeholder="Nguyễn Văn A, Trần Thị B, ..."
+                placeholder="Nguyễn Văn A, Trần Thị B (Ngăn cách bằng dấu phẩy)"
               />
             </div>
             <div class="form-group">
               <label class="form-label">Các bản chiếu (Versions)</label>
-              <input
-                type="text"
-                class="form-input"
-                id="movieVersions"
-                placeholder="Vietsub, Thuyết minh, Lồng tiếng"
-              />
+              <div class="versions-container" style="display: flex; flex-direction: column; gap: 8px; background: #333; padding: 10px; border-radius: 4px; border: 1px solid #555;">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                  <label style="cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" name="movieVersionCheckbox" value="Vietsub" checked style="margin-right: 5px;"> Vietsub
+                  </label>
+                  <label style="cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" name="movieVersionCheckbox" value="Thuyết minh" style="margin-right: 5px;"> Thuyết minh
+                  </label>
+                  <label style="cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" name="movieVersionCheckbox" value="Lồng tiếng" style="margin-right: 5px;"> Lồng tiếng
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="movieVersionsCustom"
+                  placeholder="Loại khác (VD: CAM, HD, ...)"
+                  style="margin-top: 5px;"
+                />
+              </div>
+              <!-- Trường ẩn để giữ tương thích logic cũ nếu cần -->
+              <input type="hidden" id="movieVersions" />
             </div>
             <div
               style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px"
             >
               <div class="form-group">
-                <label class="form-label">Thể loại *</label>
-                <select class="form-select" id="movieCategory" required>
-                  <option value="">Chọn thể loại</option>
-                </select>
+                <label class="form-label">Thể loại * (Chọn nhiều)</label>
+                <!-- Thay thế Select bằng Checkbox List -->
+                <div id="movieCategoryContainer" class="checkbox-list-container" style="max-height: 150px; overflow-y: auto; background: #333; padding: 10px; border-radius: 4px; border: 1px solid #555;">
+                    <!-- Checkboxes will be injected here by JS -->
+                    <div class="text-muted small">Đang tải...</div>
+                </div>
+                <!-- Input ẩn để giữ tương thích code cũ nếu cần (hoặc bỏ qua) -->
+                <input type="hidden" id="movieCategory"> 
               </div>
               <div class="form-group">
                 <label class="form-label">Quốc gia *</label>
@@ -291,7 +360,7 @@
               </div>
             </div>
             <div
-              style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px"
+              style="display: grid; grid-template-columns: 0.8fr 1.4fr 0.8fr; gap: 16px"
             >
               <div class="form-group">
                 <label class="form-label">Năm phát hành *</label>
@@ -307,12 +376,17 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Thời lượng</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  id="movieDuration"
-                  placeholder="120 phút"
-                />
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div class="input-with-label" style="position: relative;">
+                    <input type="number" id="movieDurationHour" class="form-input" placeholder="0" min="0" style="padding-right: 35px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none;">giờ</span>
+                  </div>
+                  <div class="input-with-label" style="position: relative;">
+                    <input type="number" id="movieDurationMinute" class="form-input" placeholder="0" min="0" style="padding-right: 45px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none;">phút</span>
+                  </div>
+                </div>
+                <input type="hidden" id="movieDuration" />
               </div>
               <div class="form-group">
                 <label class="form-label">Độ tuổi</label>
@@ -408,7 +482,7 @@
 
     <!-- Episode Modal -->
     <div class="modal-overlay" id="episodeModal">
-      <div class="modal">
+      <div class="modal" style="max-width: 950px; width: 95%;">
         <div class="modal-header">
           <h3 class="modal-title" id="episodeModalTitle">Thêm Tập Mới</h3>
           <button class="modal-close" onclick="closeModal('episodeModal')">
@@ -419,17 +493,8 @@
           <form id="episodeForm" onsubmit="handleEpisodeSubmit(event)">
             <input type="hidden" id="episodeIndex" />
             <div class="form-group" id="episodeNumberGroup">
-    <label class="form-label">Số tập *</label>
-    <input type="number" class="form-input" id="episodeNumber" placeholder="1" min="1" required />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Tiêu đề tập</label>
-              <input
-                type="text"
-                class="form-input"
-                id="episodeTitle"
-                placeholder="Tập 1: Khởi đầu"
-              />
+              <label class="form-label">Số tập *</label>
+              <input type="text" class="form-input" id="episodeNumber" placeholder="Ví dụ: 1 hoặc Tập Đặc Biệt" required />
             </div>
             <!-- Multi-Version Sources -->
             <div class="form-group">
@@ -445,16 +510,21 @@
             <!-- Trường ẩn để tương thích ngược với code cũ -->
             <input type="hidden" id="episodeYoutubeId" />
             <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px"
+              style="display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 16px"
             >
               <div class="form-group">
                 <label class="form-label">Thời lượng</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  id="episodeDuration"
-                  placeholder="45 phút"
-                />
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div class="input-with-label" style="position: relative;">
+                    <input type="number" id="episodeDurationHour" class="form-input" placeholder="0" min="0" style="padding-right: 35px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none;">giờ</span>
+                  </div>
+                  <div class="input-with-label" style="position: relative;">
+                    <input type="number" id="episodeDurationMinute" class="form-input" placeholder="0" min="0" style="padding-right: 45px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none;">phút</span>
+                  </div>
+                </div>
+                <input type="hidden" id="episodeDuration" />
               </div>
               <div class="form-group">
     <label class="form-label">Chất lượng</label>
@@ -484,6 +554,89 @@
             onclick="document.getElementById('episodeForm').requestSubmit()"
           >
             <i class="fas fa-save"></i> Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Episodes Batch Modal (NEW) -->
+    <div class="modal-overlay" id="importEpisodesModal">
+      <div class="modal" style="max-width: 900px; height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <h3 class="modal-title"><i class="fas fa-file-import"></i> Thêm Nhiều Tập Từ API</h3>
+          <button class="modal-close" onclick="closeModal('importEpisodesModal')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+          <!-- Thanh dán URL -->
+          <div class="api-import-box" style="background: rgba(40, 167, 69, 0.1); border: 1px dashed #28a745; border-radius: 8px; padding: 15px;">
+              <label class="form-label" style="color: #28a745; display: flex; align-items: center; gap: 8px;">
+                  <i class="fas fa-link"></i> Nhập Link API của Phim (VD: OPhim / KKPhim)
+              </label>
+              <div style="display: flex; gap: 10px;">
+                  <input type="url" class="form-input" id="apiBatchEpisodesUrl" placeholder="Ví dụ: https://ophim1.com/v1/api/phim/venom-kem-chung-song-khao" style="flex: 1;">
+                  <button type="button" class="btn btn-success" onclick="fetchBatchEpisodesFromAPI()" id="btnFetchBatchApi" style="white-space: nowrap;">
+                      <i class="fas fa-cloud-download-alt"></i> Lấy Danh Sách
+                  </button>
+              </div>
+          </div>
+          
+          <!-- Bảng Preview Data -->
+          <div style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
+              <div style="background: rgba(255,255,255,0.05); padding: 10px 15px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                 <strong id="importBatchStatus" style="color: var(--text-secondary);">Chưa có dữ liệu...</strong>
+                 <button class="btn btn-sm btn-danger" onclick="clearImportBatchTable()" style="display: none;" id="btnClearBatchTable">
+                     <i class="fas fa-trash"></i> Xóa bảng
+                 </button>
+              </div>
+              <div style="flex: 1; overflow-y: auto;">
+                  <table class="admin-table" style="margin: 0; border: none;">
+                    <thead>
+                      <tr>
+                        <th style="width: 100px;">Tên Tập (VD: 1)</th>
+                        <th>
+                            <div style="display: flex; flex-direction: column; gap: 5px;">
+                                <span>Server M3U8 (Nguồn phát)</span>
+                                <select class="form-select batch-header-select" onchange="changeAllLabels('hls', this.value)" style="font-size: 1em; padding: 6px 8px; font-weight: 600;">
+                                   <option value="">🏷️ Đổi Nhãn Hàng Loạt</option>
+                                   <option value="Bản gốc" style="color: #2ecc71;">🟢 Bản gốc</option>
+                                   <option value="Vietsub" style="color: #3498db;">🔵 Vietsub</option>
+                                   <option value="Thuyết minh" style="color: #e67e22;">🟠 Thuyết minh</option>
+                                   <option value="Lồng tiếng" style="color: #9b59b6;">🟣 Lồng tiếng</option>
+                                   <option value="Dự phòng" style="color: #e74c3c;">🔴 Dự phòng</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th>
+                            <div style="display: flex; flex-direction: column; gap: 5px;">
+                                <span>Embed Link (Dự phòng)</span>
+                                <select class="form-select batch-header-select" onchange="changeAllLabels('embed', this.value)" style="font-size: 1em; padding: 6px 8px; font-weight: 600;">
+                                   <option value="">🏷️ Đổi Nhãn Hàng Loạt</option>
+                                   <option value="Bản gốc" style="color: #2ecc71;">🟢 Bản gốc</option>
+                                   <option value="Vietsub" style="color: #3498db;">🔵 Vietsub</option>
+                                   <option value="Thuyết minh" style="color: #e67e22;">🟠 Thuyết minh</option>
+                                   <option value="Lồng tiếng" style="color: #9b59b6;">🟣 Lồng tiếng</option>
+                                   <option value="Dự phòng" style="color: #e74c3c;">🔴 Dự phòng</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th style="width: 50px; text-align: center;">Xóa</th>
+                      </tr>
+                    </thead>
+                    <tbody id="previewImportTable">
+                       <tr><td colspan="4" class="text-center text-muted" style="padding: 30px;">Dán Link API và bấm "Lấy Danh Sách" để xem trước các tập.</td></tr>
+                    </tbody>
+                  </table>
+              </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top: auto;">
+          <button class="btn btn-secondary" onclick="closeModal('importEpisodesModal')">
+            Đóng
+          </button>
+          <button class="btn btn-primary" onclick="saveBatchImportedEpisodes()">
+            <i class="fas fa-upload"></i> Lưu Lên Hệ Thống
           </button>
         </div>
       </div>
@@ -738,6 +891,67 @@
                     <button type="submit" class="btn btn-primary">Lưu Lại</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Album Management Modal -->
+<div class="modal-overlay" id="albumModal">
+    <div class="modal" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Lưu vào Album</h3>
+            <button class="modal-close" onclick="closeModal('albumModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="albumListContainer" class="album-list" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                <!-- Albums will be loaded here -->
+                <div class="loading-spinner" style="margin: 20px auto;"></div>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+            
+            <div class="create-album-form">
+                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">Tạo Album mới:</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="newAlbumName" class="form-input" placeholder="Tên Album (VD: Phim hay cuối tuần)">
+                    <button class="btn btn-primary" onclick="createNewAlbum()" style="white-space: nowrap;">
+                        <i class="fas fa-plus"></i> Tạo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- My Albums Modal (View mode) -->
+<div class="modal-overlay" id="myAlbumsModal">
+    <div class="modal" style="max-width: 600px; width: 90%;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="myAlbumsModalTitle">Album của tôi</h3>
+            <button class="modal-close" onclick="closeModal('myAlbumsModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="padding: 0;">
+            <!-- Breadcrumb / Navigation -->
+            <div id="albumViewHeader" style="padding: 12px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05); display: none; align-items: center; gap: 15px;">
+                <button class="btn-back-album" onclick="backToAlbumList()">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </button>
+                <span id="currentAlbumName" style="font-weight: 600; color: var(--accent-primary); font-size: 15px;"></span>
+            </div>
+
+            <!-- List of Albums Container -->
+            <div id="myAlbumsListContainer" style="padding: 20px; max-height: 500px; overflow-y: auto;">
+                <div class="loading-spinner" style="margin: 20px auto;"></div>
+            </div>
+
+            <!-- List of movies in an album -->
+            <div id="albumMoviesContainer" style="padding: 20px; max-height: 500px; overflow-y: auto; display: none;">
+                <!-- Movies will be rendered here -->
+            </div>
         </div>
     </div>
 </div>

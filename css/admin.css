@@ -309,3 +309,143 @@
     font-size: 11px;
   }
 }
+
+/* --- IMAGE UPLOAD & PREVIEW --- */
+.input-with-action {
+  display: flex !important;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.btn-upload {
+  white-space: nowrap;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-upload:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.image-upload-preview {
+  margin-top: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: var(--border-radius-sm);
+  display: inline-block;
+  border: 1px dashed var(--border-color);
+}
+
+.image-upload-preview img {
+  max-height: 120px;
+  display: block;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+/* --- ADMIN NOTIFICATION PANEL --- */
+/* Hộp gửi thông báo */
+.admin-notif-send-box {
+  background: linear-gradient(135deg, rgba(77, 184, 255, 0.08) 0%, rgba(77, 184, 255, 0.02) 100%);
+  border: 1px solid rgba(77, 184, 255, 0.15);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+/* Thống kê thông báo */
+.admin-notif-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.admin-notif-stat i {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Badge loại thông báo */
+.notif-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.notif-type-badge.system {
+  background: rgba(77, 184, 255, 0.15);
+  color: #4db8ff;
+}
+.notif-type-badge.new_movie {
+  background: rgba(229, 9, 20, 0.15);
+  color: #ff6b6b;
+}
+.notif-type-badge.promotion {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+.notif-type-badge.maintenance {
+  background: rgba(108, 117, 125, 0.15);
+  color: #adb5bd;
+}
+.notif-type-badge.vip_request {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+.notif-type-badge.vip_approved {
+  background: rgba(81, 207, 102, 0.15);
+  color: #51cf66;
+}
+
+/* Hộp lập lịch thông báo */
+.admin-notif-schedule-box {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 193, 7, 0.02) 100%);
+  border: 1px solid rgba(255, 193, 7, 0.15);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-top: 20px;
+}
+
+/* Badge trạng thái lịch hẹn */
+.sched-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sched-status.pending {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+.sched-status.sent {
+  background: rgba(81, 207, 102, 0.15);
+  color: #51cf66;
+}
+.sched-status.paused {
+  background: rgba(108, 117, 125, 0.15);
+  color: #adb5bd;
+}
+
+/* Responsive schedule form trên mobile */
+@media (max-width: 768px) {
+  .admin-notif-schedule-box [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}

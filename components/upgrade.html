@@ -31,29 +31,26 @@
       <div class="pricing-card popular">
         <div class="badge-popular">KHUYÊN DÙNG</div>
         <div class="pricing-header">
-          <h3 style="color: var(--accent-primary)">MovieChain VIP</h3>
-          <div class="price">99.000đ<span>/tháng</span></div>
+          <h3 style="color: var(--accent-primary)">Trạm Phim VIP</h3>
+          <div class="price">49.000đ<span>/tháng</span></div>
         </div>
         <ul class="pricing-features">
           <li>
             <i class="fas fa-check-circle text-success"></i>
-            <strong>Chất lượng 4K Ultra HD</strong>
+            <strong>Phân giải Full HD & 4K siêu nét</strong>
           </li>
           <li>
             <i class="fas fa-check-circle text-success"></i>
-            <strong>Không quảng cáo</strong>
+            <strong>Trải nghiệm xem không quảng cáo</strong>
           </li>
           <li>
-            <i class="fas fa-check-circle text-success"></i> Âm thanh vòm Dolby
-            Atmos
+            <i class="fas fa-check-circle text-success"></i> Băng thông ưu tiên, không giật lag
           </li>
           <li>
-            <i class="fas fa-check-circle text-success"></i> Xem sớm phim bom
-            tấn
+            <i class="fas fa-check-circle text-success"></i> Mở khóa kho phim Premium độc quyền
           </li>
           <li>
-            <i class="fas fa-check-circle text-success"></i> Huy hiệu VIP độc
-            quyền
+            <i class="fas fa-check-circle text-success"></i> Huy hiệu VIP nổi bật khi chat & bình luận
           </li>
         </ul>
         <button class="btn btn-primary btn-glow" onclick="openPaymentQRModal()">
@@ -64,13 +61,13 @@
       <div class="pricing-card">
         <div class="pricing-header">
           <h3>Trọn Đời</h3>
-          <div class="price">999.000đ<span>/lần</span></div>
+          <div class="price">499.000đ<span>/lần</span></div>
         </div>
         <ul class="pricing-features">
-          <li><i class="fas fa-check"></i> Tất cả đặc quyền VIP</li>
-          <li><i class="fas fa-check"></i> Thanh toán 1 lần duy nhất</li>
-          <li><i class="fas fa-check"></i> Tặng 50 CRO vào ví</li>
-          <li><i class="fas fa-check"></i> Hỗ trợ 24/7 riêng biệt</li>
+          <li><i class="fas fa-check"></i> Sở hữu vĩnh viễn mọi đặc quyền VIP</li>
+          <li><i class="fas fa-check"></i> Chỉ cần thanh toán một lần duy nhất</li>
+          <li><i class="fas fa-check"></i> Tặng ngay quỹ khởi điểm 50 CRO vào ví</li>
+          <li><i class="fas fa-check"></i> Kênh hỗ trợ kỹ thuật ưu tiên 24/7</li>
         </ul>
         <button
           class="btn btn-secondary"
@@ -148,7 +145,7 @@
         <p><strong>Chủ tài khoản:</strong> HUYNH PHU TRONG</p>
         <p>
           <strong>Số tiền:</strong>
-          <span id="paymentAmount" style="color: #fcd535">99,000đ</span>
+          <span id="paymentAmount" style="color: #fcd535">49,000đ</span>
         </p>
         <p>
           <strong>Nội dung:</strong>
@@ -159,10 +156,48 @@
       <button
         class="btn btn-success"
         style="width: 100%; margin-top: 20px"
-        onclick="confirmPayment()"
+        onclick="openUploadBillModal()"
       >
         <i class="fas fa-check-circle"></i> Tôi Đã Chuyển Khoản
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Upload Bill -->
+<div class="modal-overlay" id="uploadBillModal">
+  <div class="modal" style="max-width: 450px; text-align: center">
+    <div class="modal-header">
+      <h3 class="modal-title">Xác Nhận Thanh Toán</h3>
+      <button class="modal-close" onclick="closeModal('uploadBillModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted mb-3">
+        Vui lòng tải lên ảnh chụp màn hình biên lai chuyển khoản để Admin xác nhận.
+      </p>
+      
+      <div class="upload-area" style="border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 20px; margin-bottom: 20px; cursor: pointer; position: relative;" onclick="document.getElementById('billImageInput').click()">
+        <input type="file" id="billImageInput" accept="image/*" style="display: none;" onchange="previewBillImage(event)" />
+        <div id="uploadPlaceholder" style="padding: 20px 0;">
+            <i class="fas fa-cloud-upload-alt" style="font-size: 40px; color: var(--accent-primary); margin-bottom: 10px;"></i>
+            <p>Nhấn để chọn ảnh từ thiết bị</p>
+            <small class="text-muted">(Hỗ trợ JPG, PNG, JPEG)</small>
+        </div>
+        <img id="billPreview" src="" alt="Bill Preview" style="display: none; width: 100%; max-height: 250px; object-fit: contain; border-radius: 4px;" />
+      </div>
+
+      <button id="submitBillBtn" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;" onclick="submitVipRequest()" disabled>
+        <i class="fas fa-paper-plane"></i> Gửi Yêu Cầu Nâng Cấp
+      </button>
+      
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+         <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 5px;">Gặp vấn đề khi thanh toán?</p>
+         <a href="#" class="text-primary" style="text-decoration: underline;" onclick="showPage('support'); closeModal('uploadBillModal'); closeModal('paymentQRModal');">
+            <i class="fas fa-headset"></i> Liên hệ Hỗ Trợ Admin
+         </a>
+      </div>
     </div>
   </div>
 </div>
