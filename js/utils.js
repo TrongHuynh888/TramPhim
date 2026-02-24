@@ -147,6 +147,18 @@ function showPage(pageName, addToHistory = true) {
       const url = pageName === 'home' ? basePath : `${cleanBase}#/${pageName}`;
       history.pushState({ page: pageName }, "", url);
   }
+  
+  // 0.5 Reset Metadata về mặc định nếu rời khỏi trang phim
+  if (pageName !== "watch" && pageName !== "movieDetail" && pageName !== "movieIntro") {
+      if (typeof updatePageMetadata === "function") {
+          updatePageMetadata(
+              "Trạm Phim - Rạp Chiếu Phim Blockchain",
+              "Rạp Chiếu Phim Blockchain - Xem phim trực tuyến, thanh toán bằng CRO Token",
+              "https://public-frontend-cos.metadl.com/mgx/img/favicon_atoms.ico",
+              window.location.href
+          );
+      }
+  }
 
   // 1. Ẩn tất cả các trang
   document.querySelectorAll(".page").forEach((page) => {
@@ -865,5 +877,45 @@ function customAlert(message, options = {}) {
             onCancel: () => resolve()
         });
     });
+}
+// ============================================
+// 6. CẬP NHẬT METADATA SEO/CHIA SẺ (OG TAGS)
+// ============================================
+
+/**
+ * [NEW] Hàm cập nhật thẻ meta động để hỗ trợ tính năng Chia sẻ link (Share Preview)
+ * Khi rời khỏi trang chi tiết, có thể tuỳ chọn gắn về giá trị mặc định của app.
+ */
+function updatePageMetadata(title, description, imageUrl, url) {
+  // Cập nhật Document Title
+  if (title) document.title = title;
+
+  // Cập nhật thẻ Open Graph
+  const ogTitle = document.getElementById("ogTitle");
+  if (ogTitle && title) ogTitle.setAttribute("content", title);
+
+  const ogDesc = document.getElementById("ogDescription");
+  if (ogDesc && description) ogDesc.setAttribute("content", description);
+
+  const ogImage = document.getElementById("ogImage");
+  if (ogImage && imageUrl) ogImage.setAttribute("content", imageUrl);
+
+  const ogUrl = document.getElementById("ogUrl");
+  // Thêm tự động hashtag nếu là url đang truy cập
+  if (ogUrl) ogUrl.setAttribute("content", url || window.location.href);
+
+  // Thẻ Twitter Card
+  const twTitle = document.getElementById("twTitle");
+  if (twTitle && title) twTitle.setAttribute("content", title);
+
+  const twDesc = document.getElementById("twDescription");
+  if (twDesc && description) twDesc.setAttribute("content", description);
+
+  const twImage = document.getElementById("twImage");
+  if (twImage && imageUrl) twImage.setAttribute("content", imageUrl);
+  
+  // Trình duyệt native (như Edge) đôi khi lưu Cache thẻ header,
+  // nhưng khi tải qua JS SPA và user nhấn "Share", Chromium Mới nhất 
+  // vẫn sẽ quét lại DOM hiện hành để tạo card Preview.
 }
 

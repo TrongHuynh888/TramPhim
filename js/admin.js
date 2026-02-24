@@ -826,25 +826,42 @@ async function fetchMovieFromAPI() {
         }
 
         const resData = await response.json();
-        if (!resData || !resData.data || !resData.data.item) {
+        
+        // Hỗ trợ cả 2 chuẩn API: KKPhim (resData.data.item) và OPhim/PhimAPI (resData.movie)
+        let movieData = null;
+        let episodesData = null;
+        
+        if (resData.movie) {
+            movieData = resData.movie;
+            episodesData = resData.episodes; // OPhim/PhimAPI để episodes ở ngoài
+        } else if (resData.data && resData.data.item) {
+            movieData = resData.data.item;
+            episodesData = movieData.episodes || (resData.data && resData.data.episodes);
+        }
+
+        if (!movieData) {
              throw new Error("Dữ liệu API không đúng chuẩn hoặc phim không tồn tại!");
         }
 
-        const movieData = resData.data.item;
-        
         // --- 1. FILL TÊN PHIM ---
         document.getElementById("movieTitle").value = movieData.name || "";
-        // Tên tiếng Anh (origin_name từ OPhim)
+        // Tên tiếng Anh (origin_name từ API)
         document.getElementById("movieOriginTitle").value = movieData.origin_name || "";
         
         // --- 2. FILL HÌNH ẢNH ---
-        // Domain ảnh của Ophim thường trả chung vào biến resData.data.seoOnPage.image 
-        // hoặc APP_DOMAIN_CDN_IMAGE + thumb_url
-        let cdnDomain = resData.data.APP_DOMAIN_CDN_IMAGE;
-        if (!cdnDomain) cdnDomain = "https://img.ophim.live/uploads/movies"; // Fallback URL
+        let thumbUrl = movieData.thumb_url || "";
+        let posterUrl = movieData.poster_url || "";
         
-        const thumbUrl = movieData.thumb_url.startsWith("http") ? movieData.thumb_url : `${cdnDomain}/${movieData.thumb_url}`;
-        const posterUrl = movieData.poster_url.startsWith("http") ? movieData.poster_url : `${cdnDomain}/${movieData.poster_url}`;
+        // Cdn Domain cho trường hợp trả về link tương đối
+        let cdnDomain = resData.APP_DOMAIN_CDN_IMAGE || (resData.data && resData.data.APP_DOMAIN_CDN_IMAGE) || resData.pathImage || "https://img.ophim.live/uploads/movies";
+        cdnDomain = cdnDomain.replace(/\/$/, "");
+
+        if (thumbUrl && !thumbUrl.startsWith("http")) {
+             thumbUrl = `${cdnDomain}/${thumbUrl.replace(/^\//, "")}`;
+        }
+        if (posterUrl && !posterUrl.startsWith("http")) {
+             posterUrl = `${cdnDomain}/${posterUrl.replace(/^\//, "")}`;
+        }
 
         document.getElementById("moviePoster").value = thumbUrl;
         document.getElementById("movieBackground").value = posterUrl;
@@ -916,19 +933,23 @@ async function fetchMovieFromAPI() {
         }
         
         // --- 7. TẠO TỰ ĐỘNG DANH SÁCH TẬP PHIM SERVER DATA (Trick Save API) ---
-        if (movieData.episodes && movieData.episodes.length > 0) {
-            const svData = movieData.episodes[0].server_data;
-            if (svData && svData.length > 0) {
-                // Lưu tạm mảng tập phim OPhim vào Input Ẩn để Admin bấm lưu nó tự save theo!
-                // Do Admin form chưa hỗ trợ Save Episdoes cùng lúc với Create Movie. 
-                // Tốt nhất là hiện Alert nhắc Admin lấy List Link M3U8 để thêm sau
-                
-                showNotification(`Đã tự động điền Form! Phim này có ${svData.length} tập. Vui lòng bấm LƯU để tạo phim trước, sau đó chép Link thủ công sang nút THÊM TẬP!`, "success", 8000);
-                
-                // Lưu tạm list server_data raw vào bộ nhớ window cho phép copy paste nếu cần
-                window.tempOphimEpisodes = svData; 
-                console.log("📺[OPhim] Dữ liệu tập:", svData);
-            }
+        let svData = null;
+        if (episodesData && episodesData.length > 0) {
+            svData = episodesData[0].server_data;
+        } else if (movieData.episodes && movieData.episodes.length > 0) {
+            svData = movieData.episodes[0].server_data;
+        }
+
+        if (svData && svData.length > 0) {
+            // Lưu tạm mảng tập phim OPhim vào Input Ẩn để Admin bấm lưu nó tự save theo!
+            // Do Admin form chưa hỗ trợ Save Episdoes cùng lúc với Create Movie. 
+            // Tốt nhất là hiện Alert nhắc Admin lấy List Link M3U8 để thêm sau
+            
+            showNotification(`Đã tự động điền Form! Phim này có ${svData.length} tập. Vui lòng bấm LƯU để tạo phim trước, sau đó chép Link thủ công sang nút THÊM TẬP!`, "success", 8000);
+            
+            // Lưu tạm list server_data raw vào bộ nhớ window cho phép copy paste nếu cần
+            window.tempOphimEpisodes = svData; 
+            console.log("📺[OPhim/PhimAPI] Dữ liệu tập:", svData);
         } else {
              showNotification("Tải dữ liệu thông tin phim thành công!", "success");
         }
@@ -1447,18 +1468,28 @@ async function fetchBatchEpisodesFromAPI() {
         if (!response.ok) throw new Error("Lỗi mạng: " + response.status);
 
         const resData = await response.json();
-        if (!resData || !resData.data || !resData.item) {
-             const fallbackItem = resData.data?.item || resData.item;
-             if (!fallbackItem) throw new Error("Dữ liệu không đúng cấu trúc Phim của OPhim.");
-             resData.data = { item: fallbackItem }; 
+        
+        let episodesData = null;
+        let movieData = null;
+        
+        // Hỗ trợ cả 2 chuẩn API: KKPhim (resData.data.item) và OPhim/PhimAPI (resData.movie)
+        if (resData.movie) {
+            movieData = resData.movie;
+            episodesData = resData.episodes; // OPhim/PhimAPI
+        } else if (resData.data && resData.data.item) {
+            movieData = resData.data.item;
+            episodesData = movieData.episodes || (resData.data && resData.data.episodes);
         }
 
-        const movieData = resData.data.item;
-        if (!movieData.episodes || movieData.episodes.length === 0) {
+        if (!movieData) {
+             throw new Error("Dữ liệu không đúng cấu trúc Phim của OPhim/KKPhim.");
+        }
+
+        if (!episodesData || episodesData.length === 0) {
             throw new Error("Phim này chưa có tập nào được cập nhật trên API!");
         }
 
-        const serverData = movieData.episodes[0].server_data; // OPhim Format
+        const serverData = episodesData[0].server_data;
         if (!serverData || serverData.length === 0) {
             throw new Error("Không tìm thấy server_data (Link Video) hợp lệ!");
         }
@@ -1466,6 +1497,14 @@ async function fetchBatchEpisodesFromAPI() {
         // Render lên bảng
         tbody.innerHTML = ""; 
         serverData.forEach((ep) => {
+            let m3u8Clean = typeof ep.link_m3u8 === 'string' && ep.link_m3u8.includes("http") && !ep.link_m3u8.startsWith("http")
+                ? ep.link_m3u8.substring(ep.link_m3u8.indexOf("http")).trim()
+                : (ep.link_m3u8 || '');
+                
+            let embedClean = typeof ep.link_embed === 'string' && ep.link_embed.includes("http") && !ep.link_embed.startsWith("http")
+                ? ep.link_embed.substring(ep.link_embed.indexOf("http")).trim()
+                : (ep.link_embed || '');
+
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td>
@@ -1479,7 +1518,7 @@ async function fetchBatchEpisodesFromAPI() {
                        <option value="Lồng tiếng" style="color: #9b59b6;">🟣 Lồng tiếng</option>
                        <option value="Dự phòng" style="color: #e74c3c;">🔴 Dự phòng</option>
                    </select>
-                   <input type="text" class="form-input batch-ep-hls" value="${ep.link_m3u8 || ''}" placeholder="Link .m3u8..." />
+                   <input type="text" class="form-input batch-ep-hls" value="${m3u8Clean}" placeholder="Link .m3u8..." />
                 </td>
                 <td>
                    <select class="form-select batch-ep-embed-label" style="margin-bottom: 5px; font-size: 0.9em; padding: 4px;">
@@ -1489,7 +1528,7 @@ async function fetchBatchEpisodesFromAPI() {
                        <option value="Lồng tiếng" style="color: #9b59b6;">🟣 Lồng tiếng</option>
                        <option value="Dự phòng" selected style="color: #e74c3c;">🔴 Dự phòng</option>
                    </select>
-                   <input type="text" class="form-input batch-ep-embed" value="${ep.link_embed || ''}" placeholder="Link Iframe (Tùy chọn)" />
+                   <input type="text" class="form-input batch-ep-embed" value="${embedClean}" placeholder="Link Iframe (Tùy chọn)" />
                 </td>
                 <td style="text-align: center;">
                     <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button>

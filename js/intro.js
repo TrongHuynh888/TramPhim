@@ -174,15 +174,26 @@ async function viewMovieIntro(movieId, updateHistory = true) {
     showPage("movieIntro", false); // Không push state ở đây để tránh duplicate
     
     // Thay đổi URL sử dụng History API (Chỉ làm khi updateHistory = true)
+    let newUrl = window.location.href; // Khởi tạo url mặc định
     if (movie && movie.title && updateHistory) {
         const slug = createSlug(movie.title);
         let basePath = window.APP_BASE_PATH || "";
         const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-        const newUrl = `${cleanBase}#/intro/${slug}-${movieId}`;
+        newUrl = `${cleanBase}#/intro/${slug}-${movieId}`;
         history.pushState({ movieId: movieId, page: 'intro' }, movie.title, newUrl);
         console.log("✅ Đã thay đổi URL thành:", newUrl);
     }
     
+    // Cập nhật Meta Data để Share Link có ảnh và mô tả
+    if(movie) {
+        updatePageMetadata(
+            movie.title + " - Trạm Phim", 
+            movie.description || "Xem phim " + movie.title + " trực tuyến, thanh toán bằng CRO Token", 
+            movie.posterUrl || movie.backgroundUrl || "https://public-frontend-cos.metadl.com/mgx/img/favicon_atoms.ico", 
+            window.location.origin + window.location.pathname + newUrl.substring(newUrl.indexOf("#"))
+        );
+    }
+
     // Kiểm tra xem page đã active chưa
     const movieIntroPage = document.getElementById("movieIntroPage");
     console.log("📌 movieIntroPage class:", movieIntroPage?.className);

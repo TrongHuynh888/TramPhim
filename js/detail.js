@@ -348,13 +348,24 @@ async function viewMovieDetail(movieId, updateHistory = true) {
   showPage("movieDetail", false); // Không push state ở đây để tránh duplicate ?page=
   
   // 12. Cập nhật URL đẹp (Pretty URL) cho trang Xem phim
+  let newUrl = window.location.href; // Mặc định tự động lấy url hiện tại
   if (movie && movie.title && updateHistory) {
       const slug = createSlug(movie.title || "video");
       let basePath = window.APP_BASE_PATH || "";
       const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-      const newUrl = `${cleanBase}#/watch/${slug}-${movieId}`;
+      newUrl = `${cleanBase}#/watch/${slug}-${movieId}`;
       console.log("🚀 Pushing Detail URL:", newUrl);
       history.pushState({ movieId: movieId, page: 'watch' }, movie.title, newUrl);
+  }
+  
+  // 13. Cập nhật thẻ chia sẻ (Meta Data)
+  if(movie && typeof updatePageMetadata === "function") {
+      updatePageMetadata(
+          "Xem phim " + movie.title + " - Trạm Phim", 
+          movie.description || "Rạp Chiếu Phim Blockchain - Xem phim trực tuyến, thanh toán bằng CRO Token", 
+          movie.posterUrl || movie.backgroundUrl || "https://public-frontend-cos.metadl.com/mgx/img/favicon_atoms.ico", 
+          window.location.origin + window.location.pathname + newUrl.substring(newUrl.indexOf("#"))
+      );
   }
 }
 
@@ -1333,6 +1344,12 @@ async function checkAndUpdateVideoAccess() {
           videoSource = episode.videoSource || episode.youtubeId;
       }
       
+      // --- FIX KKPHIM API FORMAT ---
+      // Làm sạch link nếu API trả về dạng có gắn nhãn phía trước (VD: "Full|https://...")
+      if (videoSource && typeof videoSource === 'string' && videoSource.includes("http") && !videoSource.startsWith("http")) {
+          videoSource = videoSource.substring(videoSource.indexOf("http")).trim();
+      }
+      
       const iframePlayer = document.getElementById("videoPlayer");
       const html5Player = document.getElementById("html5Player");
 
@@ -1365,8 +1382,15 @@ async function checkAndUpdateVideoAccess() {
           
       } else if (videoType === "hls") {
            // --- FIX EMBED IFRAME ---
-           // Nếu link nguồn chứa thẻ <iframe> (vd API trả về thẻ iframe) hoặc là link không phải đuôi m3u8 tiêu chuẩn
-           if (videoSource.includes("<iframe") || (videoSource.includes("http") && !videoSource.includes(".m3u8") && !videoSource.includes(".mp4"))) {
+           // Nhận diện link Iframe: 
+           // 1. Chứa thẻ <iframe>, 2. Là một link Player có chứa parameters (vd: /player/?url=), 
+           // 3. Hoặc link không đuôi chuẩn m3u8/mp4
+           const isEmbedUrl = videoSource.includes("<iframe") || 
+                              videoSource.includes("/player/?url=") || 
+                              videoSource.includes("player.phimapi.com") || 
+                              (videoSource.includes("http") && !videoSource.includes(".m3u8") && !videoSource.includes(".mp4"));
+                              
+           if (isEmbedUrl) {
                
                let embedUrl = videoSource;
                // Trích Regex lấy link trong src="..." nếu source chứa nguyên thẻ Iframe html
@@ -2890,6 +2914,12 @@ function stopVideo() {
         try {
             window.ytPlayer.pauseVideo();
         } catch(e) {}
+    }
+    
+    // Clear Iframe src to completely stop background logic for embed types
+    const iframePlayer = document.getElementById("videoPlayer");
+    if (iframePlayer) {
+        iframePlayer.src = "";
     }
     
     console.log("⏹️ Video đã dừng");
