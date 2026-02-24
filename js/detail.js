@@ -370,13 +370,14 @@ function updateDetailRedesignUI(movie) {
     // Cập nhật trạng thái nút Yêu thích
     const likeBtn = document.getElementById("btnLikeDetail");
     if (likeBtn && currentUser && currentUser.favorites) {
-        const isLiked = currentUser.favorites.some(fav => fav.id === movie.id);
-        const icon = likeBtn.querySelector("i");
+        const isLiked = currentUser.favorites.includes(movie.id);
         if (isLiked) {
             likeBtn.classList.add("active");
+            likeBtn.style.color = "#e50914";
             likeBtn.innerHTML = '<i class="fas fa-heart" style="color: #e50914"></i> Đã thích';
         } else {
             likeBtn.classList.remove("active");
+            likeBtn.style.color = "";
             likeBtn.innerHTML = '<i class="far fa-heart"></i> Yêu thích';
         }
     }

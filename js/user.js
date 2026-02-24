@@ -60,10 +60,31 @@ async function updateUserProfile() {
 }
 /* Cập nhật trong js/user.js */
 
-/**
- * Hàm Toggle Like với hiệu ứng tức thì (Optimistic UI)
- */
 async function toggleFavorite(movieId) {
+  // --- FALLBACK NẾU KHÔNG TRUYỀN ID ---
+  if (!movieId) {
+      if (typeof currentMovie !== 'undefined' && currentMovie && currentMovie.id) {
+          movieId = currentMovie.id;
+      } else {
+          // Lấy từ hash url nếu có dạng #/watch/slug-id
+          const hash = window.location.hash;
+          if (hash.includes('/watch/')) {
+              const parts = hash.split('/');
+              const slugWithId = parts[2] || parts[1]; // Tùy routing
+              if (slugWithId) {
+                  const idMatch = slugWithId.split('-');
+                  movieId = idMatch[idMatch.length - 1];
+              }
+          }
+      }
+  }
+
+  // Tới đây vẫn undefined thì thoát
+  if (!movieId) {
+      console.warn("Không tìm thấy ID bộ phim để thêm yêu thích.");
+      return;
+  }
+
   // 1. Kiểm tra đăng nhập
   if (!currentUser) {
     showNotification("Vui lòng đăng nhập để thích phim!", "warning");
@@ -122,6 +143,20 @@ async function toggleFavorite(movieId) {
       }
     }
   });
+
+  // 👇 XỬ LÝ NÚT Ở TRANG CHI TIẾT (btnLikeDetail) 👇
+  const detailBtn = document.getElementById("btnLikeDetail");
+  if (detailBtn) {
+      if (isAdding) {
+          detailBtn.classList.add("active");
+          detailBtn.style.color = "#e50914";
+          detailBtn.innerHTML = '<i class="fas fa-heart" style="color: #e50914"></i> Đã thích';
+      } else {
+          detailBtn.classList.remove("active");
+          detailBtn.style.color = "";
+          detailBtn.innerHTML = '<i class="far fa-heart"></i> Yêu thích';
+      }
+  }
 
   // 4. Gửi dữ liệu lên Server (Chạy ngầm - Sync Background)
   try {
