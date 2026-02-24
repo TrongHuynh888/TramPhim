@@ -241,9 +241,7 @@ async function viewMovieDetail(movieId, updateHistory = true) {
             minutesWatched: Math.floor(resumeTime / 60)
           };
           
-          // ✅ Clear resumeFromTime sau khi đã sử dụng để tránh ảnh hưởng lần sau
-          window.resumeFromTime = 0;
-          window.resumeFromEpisode = 0;
+          // (Đã dời việc clear resumeFromTime sang hàm checkAndShowContinueWatchingModal)
         }
       }
 
@@ -1000,53 +998,7 @@ async function reportError() {
         showLoading(false);
     }
 }
-// --- LOGIC TIẾP TỤC XEM (RESUME WATCH) ---
 
-/**
- * Kiểm tra lịch sử và hỏi người dùng có muốn xem tiếp không
- */
-async function checkAndShowContinueWatchingModal() {
-    if (!window.hasResumeHistory || !window.resumeTimeData) return;
-    
-    const data = window.resumeTimeData;
-    const timeVal = formatTime(data.timeWatched);
-    const percent = data.minutesWatched > 0 ? Math.min(Math.round((data.timeWatched / (60 * 60)) * 100), 99) : 0; // Giả định max 60p nếu ko có duration
-
-    document.getElementById("resumeWatchTime").textContent = timeVal;
-    document.getElementById("resumeWatchPercent").textContent = percent + "%";
-    
-    openModal("resumeWatchModal");
-}
-
-/**
- * Xử lý lựa chọn của người dùng trong Modal Tiếp tục xem
- */
-function handleResumeChoice(continueWatching) {
-    if (continueWatching && window.resumeTimeData) {
-        const time = window.resumeTimeData.timeWatched;
-        const html5Player = document.getElementById("html5Player");
-        
-        if (!html5Player.classList.contains("hidden")) {
-            html5Player.currentTime = time;
-            html5Player.play();
-        } else if (window.ytPlayer && typeof window.ytPlayer.seekTo === 'function') {
-            window.ytPlayer.seekTo(time, true);
-            window.ytPlayer.playVideo();
-        }
-        showNotification("Đang chuẩn bị bộ nhớ đệm từ vị trí cũ...", "info");
-    } else {
-        // Xem từ đầu
-        const html5Player = document.getElementById("html5Player");
-        if (!html5Player.classList.contains("hidden")) {
-            html5Player.currentTime = 0;
-            html5Player.play();
-        } else if (window.ytPlayer && typeof window.ytPlayer.seekTo === 'function') {
-            window.ytPlayer.seekTo(0, true);
-            window.ytPlayer.playVideo();
-        }
-    }
-    closeModal("resumeWatchModal");
-}
 
 // --- LOGIC THANH TIẾN TRÌNH (PROGRESS BAR) ---
 
@@ -1377,10 +1329,16 @@ async function checkAndUpdateVideoAccess() {
 
       if (videoType === "youtube") {
           iframePlayer.classList.remove("hidden");
-          let params = "rel=0&enablejsapi=1&origin=" + window.location.origin + "&autoplay=1";
-          if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
+          
+          const isModalActive = document.getElementById("continueWatchingModal")?.classList.contains("active");
+          let autoplayParams = isModalActive ? "0" : "1";
+          let params = `rel=0&enablejsapi=1&origin=${window.location.origin}&autoplay=${autoplayParams}`;
+          
+          // Chỉ thêm start time và autoplay nếu Modal KHÔNG ẩn
+          if (!isModalActive && window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
               params += `&start=${Math.floor(window.resumeTimeData.timeWatched)}`;
           }
+          
           iframePlayer.src = `https://www.youtube.com/embed/${videoSource}?${params}`;
           
           iframePlayer.addEventListener('load', function() {
@@ -1417,39 +1375,50 @@ async function checkAndUpdateVideoAccess() {
            } else {
                // Chạy HLS M3U8 bình thường
                html5Player.classList.remove("hidden");
+               const handleInitialPlayback = (player) => {
+                   const isModalActive = document.getElementById("continueWatchingModal")?.classList.contains("active");
+                   if (isModalActive) return; // Chờ người dùng click modal
+                   
+                   if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
+                       resumeVideoAtTime(window.resumeTimeData.timeWatched);
+                   } else {
+                       player.play().catch(e => console.log("Auto-play blocked:", e));
+                   }
+               };
+
                if (Hls.isSupported()) {
                    const hls = new Hls();
                    window.hlsInstance = hls;
                    hls.loadSource(videoSource);
                    hls.attachMedia(html5Player);
                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                       if (window.hasResumeHistory && window.resumeTimeData) {
-                           resumeVideoAtTime(window.resumeTimeData.timeWatched);
-                       } else {
-                           html5Player.play().catch(e => console.log("Auto-play blocked:", e));
-                       }
+                       handleInitialPlayback(html5Player);
                        populateQualityMenu(hls);
                    });
                } else if (html5Player.canPlayType('application/vnd.apple.mpegurl')) {
                    html5Player.src = videoSource;
                    html5Player.addEventListener('loadedmetadata', function() {
-                       if (window.hasResumeHistory && window.resumeTimeData) {
-                           resumeVideoAtTime(window.resumeTimeData.timeWatched);
-                       } else {
-                           html5Player.play();
-                       }
-                   });
+                       handleInitialPlayback(html5Player);
+                   }, { once: true });
                }
            }
       } else if (videoType === "mp4") {
           html5Player.classList.remove("hidden");
           html5Player.src = videoSource;
-          html5Player.addEventListener('loadedmetadata', function() {
-              if (window.hasResumeHistory && window.resumeTimeData) {
+          
+          const handleInitialPlayback = (player) => {
+              const isModalActive = document.getElementById("continueWatchingModal")?.classList.contains("active");
+              if (isModalActive) return; // Chờ người dùng click modal
+              
+              if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
                   resumeVideoAtTime(window.resumeTimeData.timeWatched);
               } else {
-                  html5Player.play().catch(e => console.log("Auto-play blocked:", e));
+                  player.play().catch(e => console.log("Auto-play blocked:", e));
               }
+          };
+          
+          html5Player.addEventListener('loadedmetadata', function() {
+              handleInitialPlayback(html5Player);
           }, { once: true });
       }
 
@@ -1502,7 +1471,8 @@ let watchProgressInterval = null; // Interval for saving every 10 seconds
  */
 async function saveWatchProgress(movieId, episodeIndex, currentTime, duration) {
     if (!currentUser || !db || !movieId) return;
-    if (currentTime <= 0 || duration <= 0) return;
+    // Bỏ qua thời gian đầu video (0s - 1s) tránh việc load trang reset lịch sử vô ý
+    if (currentTime <= 1 || duration <= 0) return;
     
     // Debounce: chỉ lưu mỗi 10 giây (đã sửa từ 30 giây)
     const now = Date.now();
@@ -1558,8 +1528,8 @@ async function saveWatchProgress(movieId, episodeIndex, currentTime, duration) {
  */
 async function saveWatchProgressImmediate(movieId, episodeIndex, currentTime, duration) {
     if (!currentUser || !db || !movieId || movieId.trim() === "") return;
-    if (currentTime === undefined || isNaN(currentTime) || duration === undefined || isNaN(duration) || duration <= 0) {
-        console.warn(`⚠️ skip save progress: invalid time/duration (${currentTime}/${duration})`);
+    // Bỏ qua nếu thời gian bằng 0 để tránh vô tình reset lịch sử xem khi video vừa load
+    if (currentTime === undefined || isNaN(currentTime) || currentTime <= 1 || duration === undefined || isNaN(duration) || duration <= 0) {
         return;
     }
     
@@ -3016,29 +2986,22 @@ async function checkAndShowContinueWatchingModal() {
                     minutesWatched: Math.floor(window.resumeFromTime / 60)
                 };
                 
-                // Nếu đang ở tập khác với tập đã xem, chuyển tập
                 if (currentEpisode !== resumeEpisode) {
                     selectEpisode(resumeEpisode);
                     await new Promise(resolve => setTimeout(resolve, 1500));
                 }
+                
+                // ✅ Xóa cờ sau khi đã sử dụng
+                window.resumeFromTime = 0;
+                window.resumeFromEpisode = 0;
                 
                 // ✅ Return sớm để checkAndUpdateVideoAccess xử lý resume
                 // (Không hiển thị modal khi click từ lịch sử)
                 return;
             }
             
-            // ✅ Chỉ hiện modal cho video KHÔNG PHẢI YouTube
-            // Lấy video type của tập hiện tại
-            const movieForCheck = allMovies.find((m) => m.id === currentMovieId);
-            let isHtml5Video = false;
-            if (movieForCheck && movieForCheck.episodes && movieForCheck.episodes[currentEpisode]) {
-                const videoType = movieForCheck.episodes[currentEpisode].videoType || "youtube";
-                isHtml5Video = (videoType === "hls" || videoType === "mp4");
-                console.log("📺 Video type hiện tại:", videoType, "-> isHtml5Video:", isHtml5Video);
-            }
-            
-            // Chỉ hiện modal nếu đã xem > 10 giây VÀ là video m3u8/mp4
-            if (lastTimeWatched > 10 && isHtml5Video) {
+            // ✅ Hiện modal cho TẤT CẢ thể loại Video (hls, mp4, youtube, embed...)
+            if (lastTimeWatched > 10) {
                 // Lưu data để sử dụng
                 window.hasResumeHistory = true;
                 window.resumeTimeData = {
@@ -3047,7 +3010,7 @@ async function checkAndShowContinueWatchingModal() {
                     minutesWatched: minutesWatched
                 };
                 
-                // Nếu đang ở t với tậập khácp đã xem, chuyển tập
+                // Nếu đang ở tập khác với tập đã xem, chuyển tập
                 if (currentEpisode !== lastEpisode) {
                     selectEpisode(lastEpisode);
                     // Đợi video load xong rồi mới hiển thị modal (1.5 giây)
@@ -3057,15 +3020,6 @@ async function checkAndShowContinueWatchingModal() {
                 // Hiển thị modal hỏi xem tiếp
                 showContinueWatchingModal(minutesWatched, lastEpisode, lastTimeWatched);
                 return true;
-            } else if (lastTimeWatched > 10 && !isHtml5Video) {
-                // YouTube video - vẫn lưu history nhưng không hiện modal
-                // Set resume data để YouTube xử lý resume (nếu cần)
-                window.hasResumeHistory = true;
-                window.resumeTimeData = {
-                    timeWatched: lastTimeWatched,
-                    episodeIndex: lastEpisode,
-                    minutesWatched: minutesWatched
-                };
             }
         }
     } catch (error) {
@@ -3726,14 +3680,13 @@ function renderRelatedParts(movie) {
           
           item.innerHTML = `
               <div style="position: relative; aspect-ratio: 2/3; overflow: hidden; border-radius: 8px; border: 1px solid #333; margin-bottom: 5px;">
-                  <img src="${m.poster}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                  <img src="${m.posterUrl || m.backgroundUrl || ''}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" onerror="this.src='https://placehold.co/200x300/1a1a1a/FFF?text=No+Image'">
               </div>
-              <div style="font-size: 0.8rem; line-height: 1.2; color: #ccc; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${m.title}</div>
+              <div style="font-size: 0.8rem; line-height: 1.2; color: #ccc; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${escapeHtml(m.title)}">${escapeHtml(m.title)}</div>
           `;
           
           item.onclick = () => {
-              showPage('watch'); 
-              viewMovieDetail(m.id);
+              viewMovieIntro(m.id);
           };
           list.appendChild(item);
       });
