@@ -1086,19 +1086,26 @@ function updateProgress() {
 }
 
 /**
- * Xử lý khi người dùng kéo thanh tua
+ * Xử lý khi người dùng kéo hoặc click thanh tua
  */
 function handleSeek(e) {
-    const percent = e.target.value;
+    const slider = e.target;
+    const val = parseFloat(slider.value);
+    const max = parseFloat(slider.max || "100");
+    
+    // Tỷ lệ phần trăm từ 0.0 - 1.0 (tránh lỗi logic khi max đổi thành số giây của video)
+    const fraction = max > 0 ? (val / max) : 0;
+    
     const html5Player = document.getElementById("html5Player");
     let total = 0;
 
     if (!html5Player.classList.contains("hidden")) {
         total = html5Player.duration || 0;
-        html5Player.currentTime = (percent / 100) * total;
+        // Bỏ nhảy video nếu chênh số lẻ
+        html5Player.currentTime = fraction * total;
     } else if (window.ytPlayer && typeof window.ytPlayer.getDuration === 'function') {
         total = window.ytPlayer.getDuration() || 0;
-        window.ytPlayer.seekTo((percent / 100) * total, true);
+        window.ytPlayer.seekTo(fraction * total, true);
     }
 }
 
