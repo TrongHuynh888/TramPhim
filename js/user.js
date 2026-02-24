@@ -426,6 +426,9 @@ async function loadMyAlbums() {
                      style="background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; cursor: pointer; transition: 0.3s; border: 1px solid rgba(255,255,255,0.05);">
                     <div style="aspect-ratio: 2/3; position: relative; overflow: hidden;">
                         <img src="${coverImg}" style="width: 100%; height: 100%; object-fit: cover; transition: 0.5s;">
+                        <button class="btn-remove-album" onclick="event.stopPropagation(); deleteAlbum('${doc.id}', '${album.name.replace(/'/g, "\\\'")}')" title="Xóa Album" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                            <i class="fas fa-trash-alt" style="font-size: 12px;"></i>
+                        </button>
                         <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 10px; text-align: center;">
                             <span style="font-size: 11px; background: var(--accent-primary); padding: 2px 8px; border-radius: 10px; color: #000; font-weight: 700;">${movieCount} phim</span>
                         </div>
@@ -445,6 +448,8 @@ async function loadMyAlbums() {
             style.innerHTML = `
                 .my-album-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.1) !important; border-color: var(--accent-primary) !important; }
                 .my-album-card:hover img { transform: scale(1.1); }
+                .btn-remove-album:hover { background: #e50914 !important; }
+                .btn-remove-movie-album:hover { background: #e50914 !important; color: #fff !important; }
             `;
             document.head.appendChild(style);
         }
@@ -491,9 +496,12 @@ async function viewAlbumMovies(albumId, albumName) {
         movies.forEach(movie => {
             html += `
                 <div class="album-movie-item" onclick="closeModal('myAlbumsModal'); viewMovieDetail('${movie.id}')" 
-                     style="cursor: pointer; transition: 0.3s; text-align: center;">
-                    <div style="aspect-ratio: 2/3; border-radius: 8px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                     style="cursor: pointer; transition: 0.3s; text-align: center; position: relative;" id="album-movie-${movie.id}">
+                    <div style="aspect-ratio: 2/3; border-radius: 8px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); position: relative;">
                         <img src="${movie.posterUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <button class="btn-remove-movie-album" onclick="event.stopPropagation(); removeMovieFromAlbum('${albumId}', '${movie.id}', this)" title="Xóa khỏi Album" style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.6); border: none; color: #ff4d4d; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 0 5px rgba(0,0,0,0.5);">
+                            <i class="fas fa-times" style="font-size: 12px;"></i>
+                        </button>
                     </div>
                     <div style="font-size: 12px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;">${movie.title}</div>
                 </div>`;
@@ -512,4 +520,99 @@ async function viewAlbumMovies(albumId, albumName) {
  */
 function backToAlbumList() {
     loadMyAlbums();
+}
+
+/**
+ * Xóa một album
+ */
+async function deleteAlbum(albumId, albumName) {
+    if (!currentUser || !db) return;
+
+    if (typeof customConfirm === 'function') {
+        const confirmDelete = await customConfirm(`Bạn có chắc chắn muốn xóa album "${albumName}" và toàn bộ phim bên trong không?`, {
+            title: "Xác nhận xóa Album",
+            type: "danger",
+            confirmText: "Xóa",
+            cancelText: "Hủy"
+        });
+        if (!confirmDelete) return;
+    } else {
+        if (!confirm(`Bạn có chắc chắn muốn xóa album "${albumName}" và toàn bộ phim bên trong không?`)) return;
+    }
+
+    try {
+        await db.collection("users").doc(currentUser.uid).collection("albums").doc(albumId).delete();
+        showNotification(`Đã xóa album "${albumName}"`, "success");
+        // Reload lại danh sách album
+        loadMyAlbums();
+    } catch (error) {
+        console.error("Lỗi xóa album:", error);
+        showNotification("Có lỗi xảy ra khi xóa album. Vui lòng thử lại.", "error");
+    }
+}
+
+/**
+ * Xóa phim khỏi album
+ */
+async function removeMovieFromAlbum(albumId, movieId, btnElement) {
+    if (!currentUser || !db) return;
+
+    if (typeof customConfirm === 'function') {
+        const confirmRemove = await customConfirm("Bạn có chắc chắn muốn xóa phim này khỏi album không?", {
+            title: "Xóa khỏi Album",
+            type: "warning",
+            confirmText: "Xóa",
+            cancelText: "Hủy"
+        });
+        if (!confirmRemove) return;
+    } else {
+        if (!confirm("Bạn có chắc chắn muốn xóa phim này khỏi album không?")) return;
+    }
+
+    try {
+        const albumRef = db.collection("users").doc(currentUser.uid).collection("albums").doc(albumId);
+        
+        // Lấy danh sách phim hiện tại
+        const doc = await albumRef.get();
+        if (!doc.exists) return;
+        
+        const albumData = doc.data();
+        const movies = albumData.movies || [];
+        
+        // Lọc bỏ bộ phim cần xóa
+        const updatedMovies = movies.filter(m => m.id !== movieId);
+        
+        // Cập nhật lại lên DB
+        await albumRef.update({
+            movies: updatedMovies
+        });
+        
+        showNotification("Đã xóa phim khỏi album", "success");
+        
+        // Cập nhật UI: Ẩn/Xóa thẻ DOM của bộ phim
+        const movieItem = btnElement.closest(".album-movie-item");
+        if (movieItem) {
+            movieItem.style.transition = "all 0.3s ease";
+            movieItem.style.opacity = "0";
+            movieItem.style.transform = "scale(0.8)";
+            setTimeout(() => {
+                movieItem.remove();
+                
+                // Nếu xóa hết sạch phim trong thẻ
+                const moviesContainer = document.getElementById("albumMoviesContainer");
+                // Kiểm tra xem container bên trong (lớp chứa grid layout) còn bao nhiêu children
+                const gridContainer = moviesContainer.querySelector("div");
+                if (gridContainer && gridContainer.children.length === 0) {
+                    moviesContainer.innerHTML = `
+                        <div style="text-align: center; color: #888; padding: 40px 20px;">
+                            Album này chưa có phim nào.
+                        </div>`;
+                }
+            }, 300);
+        }
+        
+    } catch (error) {
+        console.error("Lỗi xóa phim khỏi album:", error);
+        showNotification("Có lỗi xảy ra khi xóa phim. Vui lòng thử lại.", "error");
+    }
 }
