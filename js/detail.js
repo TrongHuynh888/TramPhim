@@ -3535,10 +3535,45 @@ function handleOrientationChange() { /* Đã vô hiệu hóa */ }
 // Không đăng ký listener orientationchange và resize nữa
 
 /**
+ * Helper: Lưu tự động thời gian xem mới nhất của trang hiện tại
+ */
+window.saveCurrentWatchProgressImmediate = function() {
+    if (!currentMovieId || typeof currentEpisode === 'undefined') return;
+    let currentTime = 0;
+    let duration = 0;
+    
+    const html5Player = document.getElementById("html5Player");
+    if (html5Player && !html5Player.classList.contains('hidden') && html5Player.duration > 0) {
+        currentTime = html5Player.currentTime;
+        duration = html5Player.duration;
+    } else if (window.ytPlayer && typeof window.ytPlayer.getCurrentTime === 'function') {
+        try {
+            currentTime = window.ytPlayer.getCurrentTime() || 0;
+            duration = window.ytPlayer.getDuration() || 0;
+        } catch(e) {}
+    }
+    
+    if (currentTime > 0 && duration > 0) {
+        saveWatchProgressImmediate(currentMovieId, currentEpisode, currentTime, duration);
+    }
+};
+
+// Đảm bảo lưu lịch sử trước khi người dùng đóng trình duyệt hoặc load lại trang
+window.addEventListener("beforeunload", () => {
+    const detailPage = document.getElementById("page-detail"); // ID của detail section
+    if (detailPage && !detailPage.classList.contains("hidden")) {
+        window.saveCurrentWatchProgressImmediate();
+    }
+});
+
+/**
  * Quay lại từ trang chi tiết
  */
 function goBackFromDetail() {
     console.log("🔙 Đang xử lý quay lại từ Detail...");
+    
+    // Lưu thời gian xem chính xác trước khi thoát
+    window.saveCurrentWatchProgressImmediate();
     
     // Ưu tiên dùng History Back để giữ trạng thái cuộn/lọc trang trước
     if (window.history.length > 1) {
