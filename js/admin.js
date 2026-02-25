@@ -25,9 +25,10 @@ async function loadAdminData() {
     // Populate movie select for episodes
     //populateMovieSelect();
 
-    // Load categories and countries tables
+    // Load categories, countries, and actors tables
     renderAdminCategories();
     renderAdminCountries();
+    renderAdminActors();
 
     // Load VIP Requests
     await loadAdminVipRequests();
@@ -932,6 +933,16 @@ async function fetchMovieFromAPI() {
             document.getElementById("movieType").value = "single";
         }
         
+        // --- 8. PHÂN TÍCH DIỄN VIÊN TỪ API ---
+        if (movieData.actor && Array.isArray(movieData.actor)) {
+            const actorNames = movieData.actor.filter(n => n.toLowerCase() !== "đang cập nhật");
+            if (typeof initSmartActorsFromCastString === "function") {
+                initSmartActorsFromCastString(actorNames.join(", "));
+            } else {
+                document.getElementById("movieCast").value = actorNames.join(", ");
+            }
+        }
+        
         // --- 7. TẠO TỰ ĐỘNG DANH SÁCH TẬP PHIM SERVER DATA (Trick Save API) ---
         let svData = null;
         if (episodesData && episodesData.length > 0) {
@@ -953,6 +964,10 @@ async function fetchMovieFromAPI() {
         } else {
              showNotification("Tải dữ liệu thông tin phim thành công!", "success");
         }
+        
+        // --- 9. COPY LINK TỪ FETCH XUỐNG DỰ PHÒNG ---
+        document.getElementById("movieApiUrlBackup").value = url;
+            
         
     } catch (err) {
         console.error("Lỗi Fetch Data OPhim:", err);
@@ -1049,7 +1064,11 @@ function openMovieModal(movieId = null) {
           }
       }
       document.getElementById("movieCast").value = movie.cast || "";
+      if (typeof initSmartActorsFromCastString === "function") {
+          initSmartActorsFromCastString(movie.cast || "");
+      }
       document.getElementById("movieOriginTitle").value = movie.originTitle || "";
+      document.getElementById("movieApiUrlBackup").value = movie.apiUrlBackup || "";
       
       // Xử lý Versions (Checkboxes + Custom)
       const versionsStr = movie.versions || "";
@@ -1149,6 +1168,10 @@ function openMovieModal(movieId = null) {
     // Reset new fields default
     document.getElementById("movieBackground").value = "";
     document.getElementById("movieCast").value = "";
+    document.getElementById("movieApiUrlBackup").value = "";
+    if (typeof initSmartActorsFromCastString === "function") {
+        initSmartActorsFromCastString("");
+    }
     
     // Reset Versions mặc định Vietsub
     const vCheckboxes = document.querySelectorAll('input[name="movieVersionCheckbox"]');
@@ -1169,6 +1192,7 @@ function openMovieModal(movieId = null) {
     toggleMoviePrice("free");
   }
 
+  window.pendingUploads = {};
   openModal("movieModal");
 }
 
@@ -1181,6 +1205,12 @@ async function handleMovieSubmit(event) {
   if (!db) {
     showNotification("Firebase chưa được cấu hình!", "error");
     return;
+  }
+
+  // Chờ tải ảnh lên Cloudinary nếu có (Deduplicate)
+  if (typeof window.uploadPendingImages === "function") {
+      const uploadSuccess = await window.uploadPendingImages();
+      if (!uploadSuccess) return; 
   }
 
   const movieId = document.getElementById("movieId").value;
@@ -1213,6 +1243,7 @@ async function handleMovieSubmit(event) {
     // New fields
     backgroundUrl: document.getElementById("movieBackground").value,
     cast: document.getElementById("movieCast").value,
+    apiUrlBackup: document.getElementById("movieApiUrlBackup").value.trim(),
     
     // Xử lý thu thập Versions
     versions: (() => {
@@ -2641,12 +2672,359 @@ async function deleteCountry(countryId) {
     renderAdminCountries();
     populateFilters();
   } catch (error) {
-    console.error("Lỗi xóa country:", error);
     showNotification("Lỗi xóa!", "error");
   } finally {
     showLoading(false);
   }
 }
+
+// ============================================
+// ADMIN CRUD - ACTORS (DIỄN VIÊN)
+// ============================================
+
+/**
+ * Hiển thị bảng Diễn Viên (Admin)
+ */
+function renderAdminActors() {
+  const tbody = document.getElementById("adminActorsTable");
+  const searchInput = document.getElementById("adminSearchActor");
+  if (!tbody) return;
+
+  let actorsToRender = allActors || [];
+
+  if (searchInput) {
+    const searchText = searchInput.value.toLowerCase().trim();
+    if (searchText) {
+      actorsToRender = actorsToRender.filter(a => 
+        (a.name && a.name.toLowerCase().includes(searchText)) || 
+        (a.id && a.id.toLowerCase().includes(searchText))
+      );
+    }
+  }
+
+  if (actorsToRender.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="6" class="text-center">Không tìm thấy diễn viên nào.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = actorsToRender
+    .map((actor, index) => {
+      const avatarUrl = actor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=random&color=fff&size=100`;
+      
+      return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>
+                  <img src="${avatarUrl}" alt="${actor.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                </td>
+                <td><strong>${actor.name}</strong><br><small class="text-muted">ID: ${actor.id}</small></td>
+                <td>${actor.gender || "Không rõ"}</td>
+                <td>${actor.dob ? new Date(actor.dob).toLocaleDateString('vi-VN') : "Không rõ"}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editActor('${actor.id}')" title="Sửa">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteActor('${actor.id}')" title="Xóa">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    })
+    .join("");
+}
+
+/**
+ * Mở modal Thêm/Sửa Diễn Viên
+ */
+function openActorModal(actorId = null) {
+  const modalTitle = document.getElementById("actorModalTitle");
+  const idInput = document.getElementById("actorId");
+  const nameInput = document.getElementById("actorName");
+  const avatarInput = document.getElementById("actorAvatar");
+  const genderInput = document.getElementById("actorGender");
+  const dobInput = document.getElementById("actorDob");
+  const bioInput = document.getElementById("actorBio");
+
+  document.getElementById("actorForm").reset();
+  if (typeof updateActorPreview === 'function') updateActorPreview();
+
+  if (actorId) {
+    const actor = allActors.find((a) => a.id === actorId);
+    if (actor) {
+      modalTitle.textContent = "Cập nhật Diễn Viên";
+      idInput.value = actor.id;
+      nameInput.value = actor.name || "";
+      avatarInput.value = actor.avatar || "";
+      genderInput.value = actor.gender || "";
+      dobInput.value = actor.dob || "";
+      bioInput.value = actor.bio || "";
+      document.getElementById("actorAltNames").value = (actor.altNames || []).join(", ");
+      if (typeof updateActorPreview === 'function') updateActorPreview();
+    }
+  } else {
+    modalTitle.textContent = "Thêm Diễn Viên Mới";
+    idInput.value = "";
+  }
+
+  window.pendingUploads = {};
+  openModal("actorModal");
+}
+
+function editActor(actorId) {
+  openActorModal(actorId);
+}
+
+/**
+ * Tạo ID thân thiện từ tên (Tương tự slug)
+ */
+function createActorIdFromName(name) {
+  return name.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/([^0-9a-z-\s])/g, '')
+    .replace(/(\s+)/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Cập nhật ảnh Preview khi gõ tên hoặc dán link ảnh
+ */
+window.updateActorPreview = function() {
+  const nameInput = document.getElementById("actorName");
+  const avatarInput = document.getElementById("actorAvatar");
+  const previewImg = document.getElementById("actorAvatarPreview");
+  
+  if (!previewImg) return;
+
+  const defaultName = nameInput && nameInput.value.trim() ? encodeURIComponent(nameInput.value.trim()) : "Actor";
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${defaultName}&background=random&color=fff&size=120`;
+  
+  const customAvatar = avatarInput && avatarInput.value.trim() ? avatarInput.value.trim() : "";
+  
+  previewImg.src = customAvatar || defaultAvatar;
+}
+
+/**
+ * Bật/tắt khung Import diễn viên từ API
+ */
+window.toggleActorApiImport = function() {
+    const box = document.getElementById("actorApiImportBox");
+    if (box) box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+/**
+ * Quét và import diễn viên từ OPhim peoples API
+ */
+window.fetchActorsFromAPI = async function() {
+    const slugInput = document.getElementById("actorApiSlugInput");
+    const resultsDiv = document.getElementById("actorApiImportResults");
+    let slug = (slugInput ? slugInput.value.trim() : "");
+    
+    if (!slug) {
+        showNotification("Vui lòng nhập slug phim!", "error");
+        return;
+    }
+    
+    // Hỗ trợ dán cả URL đầy đủ, tự bóc slug
+    const urlMatch = slug.match(/phim\/([^\/\?]+)/);
+    if (urlMatch) slug = urlMatch[1];
+    
+    const API_URL = `https://ophim1.com/v1/api/phim/${slug}/peoples`;
+    
+    try {
+        showLoading(true, "Đang quét danh sách diễn viên từ OPhim...");
+        
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`Mã lỗi: ${response.status}`);
+        
+        const result = await response.json();
+        if (!result.success || !result.data || !result.data.peoples) {
+            throw new Error("API không trả về dữ liệu diễn viên!");
+        }
+        
+        const peoples = result.data.peoples;
+        const profileSizes = result.data.profile_sizes || {};
+        const imgBase = profileSizes.w185 || "https://image.tmdb.org/t/p/w185";
+        
+        let imported = 0;
+        let skipped = 0;
+        let skippedNames = [];
+        let importedNames = [];
+        
+        for (const person of peoples) {
+            if (person.known_for_department !== "Acting") continue;
+            
+            // Tên chính: ưu tiên tên tiếng Anh trong also_known_as, nếu không thì dùng name
+            const allNames = person.also_known_as || [];
+            // Tên chính hiển thị: tìm tên Latin (tiếng Anh) trong also_known_as
+            const englishName = allNames.find(n => /^[A-Za-z\s\-\.]+$/.test(n.trim()));
+            const displayName = englishName ? englishName.trim() : person.name;
+            
+            // Kiểm tra trùng lặp: tìm trong allActors theo tên chính hoặc altNames
+            const allSearchNames = [person.name, ...allNames].map(n => n.trim().toLowerCase());
+            const existingActor = allActors.find(a => {
+                if (allSearchNames.includes(a.name.toLowerCase())) return true;
+                if (a.altNames && a.altNames.some(alt => allSearchNames.includes(alt.toLowerCase()))) return true;
+                return false;
+            });
+            
+            if (existingActor) {
+                skipped++;
+                skippedNames.push(existingActor.name);
+                continue;
+            }
+            
+            // Tạo dữ liệu diễn viên mới
+            const avatarUrl = person.profile_path ? `${imgBase}${person.profile_path}` : "";
+            const gender = person.gender_name === "Male" ? "Nam" : (person.gender_name === "Female" ? "Nữ" : "");
+            
+            // altNames = tất cả tên (bao gồm tên gốc nếu khác displayName)
+            const altNamesSet = new Set(allNames.map(n => n.trim()).filter(n => n));
+            altNamesSet.add(person.name.trim());
+            altNamesSet.delete(displayName); // Xóa tên chính ra khỏi altNames
+            
+            const baseId = createActorIdFromName(displayName);
+            const newId = `${baseId}-${Date.now().toString().slice(-4)}`;
+            
+            const actorData = {
+                id: newId,
+                name: displayName,
+                avatar: avatarUrl,
+                gender: gender,
+                dob: "",
+                bio: "",
+                altNames: Array.from(altNamesSet),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            await db.collection("actors").doc(newId).set(actorData);
+            imported++;
+            importedNames.push(displayName);
+        }
+        
+        // Reload lại kho diễn viên
+        await loadActors();
+        renderAdminActors();
+        
+        // Hiển thị kết quả
+        let html = `<div style="background: var(--bg-tertiary); border-radius: 8px; padding: 12px; font-size: 0.9rem;">`;
+        html += `<div style="margin-bottom: 8px;"><strong style="color: #51cf66;">✅ Đã thêm: ${imported}</strong>`;
+        if (imported > 0) html += ` <span style="color: var(--text-muted);">(${importedNames.join(", ")})</span>`;
+        html += `</div>`;
+        html += `<div><strong style="color: #ffc107;">⏭️ Đã bỏ qua (đã có): ${skipped}</strong>`;
+        if (skipped > 0) html += ` <span style="color: var(--text-muted);">(${skippedNames.join(", ")})</span>`;
+        html += `</div></div>`;
+        
+        if (resultsDiv) resultsDiv.innerHTML = html;
+        showNotification(`Import xong! Thêm ${imported}, bỏ qua ${skipped} diễn viên.`, "success");
+        
+    } catch (err) {
+        console.error("Lỗi fetch actors:", err);
+        showNotification("Lỗi khi quét diễn viên: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Lưu thông tin diễn viên (Submit form)
+ */
+async function handleActorSubmit(event) {
+  event.preventDefault();
+
+  // Chờ tải ảnh lên Cloudinary nếu có (Deduplicate)
+  if (typeof window.uploadPendingImages === "function") {
+      const uploadSuccess = await window.uploadPendingImages();
+      if (!uploadSuccess) return; 
+  }
+
+  const idInput = document.getElementById("actorId").value;
+  const name = document.getElementById("actorName").value.trim();
+  const avatar = document.getElementById("actorAvatar").value.trim();
+  const gender = document.getElementById("actorGender").value;
+  const dob = document.getElementById("actorDob").value;
+  const bio = document.getElementById("actorBio").value.trim();
+
+  if (!name) {
+    showNotification("Vui lòng nhập tên diễn viên!", "warning");
+    return;
+  }
+
+  // Thu thập tên gọi khác
+  const altNamesRaw = document.getElementById("actorAltNames").value.trim();
+  const altNames = altNamesRaw ? altNamesRaw.split(",").map(n => n.trim()).filter(n => n) : [];
+
+  const actorData = {
+    name,
+    avatar,
+    gender,
+    dob,
+    bio,
+    altNames,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    showLoading(true, "Đang lưu diễn viên...");
+
+    if (idInput) {
+      // Cập nhật
+      await db.collection("actors").doc(idInput).update(actorData);
+    } else {
+      // Thêm mới
+      const baseId = createActorIdFromName(name);
+      // Tạo id độc nhất để tránh trùng admin
+      const newId = `${baseId}-${Date.now().toString().slice(-4)}`;
+      
+      actorData.id = newId;
+      actorData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      
+      await db.collection("actors").doc(newId).set(actorData);
+    }
+
+    showNotification("Đã lưu diễn viên!", "success");
+    closeModal("actorModal");
+
+    await loadActors();
+    renderAdminActors();
+    
+    // Auto sync with actors UI if available
+    if (typeof renderActorsPage === 'function' && document.getElementById("actorsGrid")) {
+       renderActorsPage();
+    }
+  } catch (error) {
+    console.error("Lỗi lưu actor:", error);
+    showNotification("Lỗi: " + error.message, "error");
+  } finally {
+    showLoading(false);
+  }
+}
+
+/**
+ * Xóa diễn viên
+ */
+async function deleteActor(actorId) {
+  if (!await customConfirm("Chắc chắn xóa diễn viên này?", { title: "Xóa diễn viên", type: "danger", confirmText: "Xóa" })) return;
+
+  try {
+    showLoading(true, "Đang xóa...");
+    await db.collection("actors").doc(actorId).delete();
+    showNotification("Đã xóa diễn viên!", "success");
+    await loadActors();
+    renderAdminActors();
+  } catch (error) {
+    console.error("Lỗi xóa actor:", error);
+    showNotification("Lỗi xóa diễn viên!", "error");
+  } finally {
+    showLoading(false);
+  }
+}
+
 /**
  * Load danh sách bình luận (Đã sửa lỗi ID để xóa được ngay)
  */
@@ -2861,11 +3239,39 @@ async function loadAdminTransactions() {
 }
 
 /**
+ * Cập nhật ảnh xem trước khi dán link online
+ */
+window.updateImagePreview = function(url, previewId) {
+    const previewContainer = document.getElementById(previewId);
+    if (!previewContainer) return;
+
+    // Nếu người dùng xóa trống input, ẩn ảnh đi
+    if (!url || url.trim() === "") {
+        previewContainer.style.display = "none";
+        const img = previewContainer.querySelector('img');
+        if (img) img.src = "";
+        return;
+    }
+
+    // Nếu là file chọn từ máy (đang chờ), preview đã được set qua uploadMovieImage()
+    if (url.startsWith("[File chờ tải lên]")) return;
+
+    // Nếu là link ảnh online, hiển thị luôn
+    const img = previewContainer.querySelector('img');
+    if (img) {
+        img.src = url;
+        previewContainer.style.display = "block";
+    }
+}
+
+/**
  * Tải ảnh lên Cloudinary và cập nhật URL vào input tương ứng
  * @param {HTMLInputElement} input - Input file vừa chọn
  * @param {string} targetUrlId - ID của ô input nhận URL ảnh
  * @param {string} previewId - ID của vùng chứa ảnh xem trước
  */
+window.pendingUploads = window.pendingUploads || {};
+
 window.uploadMovieImage = async function(input, targetUrlId, previewId) {
   const file = input.files[0];
   if (!file) return;
@@ -2888,60 +3294,120 @@ window.uploadMovieImage = async function(input, targetUrlId, previewId) {
     reader.readAsDataURL(file);
   }
 
+  // 3. Lưu vào pendingUploads và hiển thị trạng thái chờ
+  window.pendingUploads[targetUrlId] = file;
+  
+  const targetInput = document.getElementById(targetUrlId);
+  if (targetInput) {
+    targetInput.value = `[File chờ tải lên] ${file.name}`;
+    targetInput.type = "text"; // Bỏ qua validate URL tạm thời
+    
+    // Nếu user sửa tay URL, tự động xoá ảnh khỏi hàng đợi
+    targetInput.oninput = () => {
+        if (!targetInput.value.startsWith("[File chờ tải lên]")) {
+            delete window.pendingUploads[targetUrlId];
+            targetInput.oninput = null; // Xóa listener
+        }
+    };
+  }
+
+  input.value = ""; // Reset để có thể chọn lại cùng 1 file
+}
+
+/**
+ * Tải các ảnh đang chờ lên Cloudinary, có kiểm tra trùng lặp để tiết kiệm request
+ * @returns {Promise<boolean>} Trả về true nếu thành công tất cả
+ */
+window.uploadPendingImages = async function() {
+  if (!window.pendingUploads || Object.keys(window.pendingUploads).length === 0) {
+      return true; // Không có gì để tải
+  }
+
+  showLoading(true, "Đang tải ảnh và thông tin lên máy chủ...");
+
+  const CLOUD_NAME = "drhr0h7dd";
+  const UPLOAD_PRESET = "tramphim_preset";
+  const API_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+  // Map file hash -> Cloudinary URL để tránh upload trùng nội dung
+  const uploadedFilesMap = new Map();
+
   try {
-    showLoading(true, "Đang tải ảnh lên Cloudinary...");
+      for (const [targetUrlId, file] of Object.entries(window.pendingUploads)) {
+          // Tạo mã băm từ các thuộc tính của file
+          const fileHash = `${file.name}_${file.size}_${file.lastModified}`;
 
-    // 3. Cấu hình các thông số Cloudinary
-    const CLOUD_NAME = "drhr0h7dd";
-    const UPLOAD_PRESET = "tramphim_preset";
-    const API_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+          if (uploadedFilesMap.has(fileHash)) {
+              // Đã upload file này trong đợt này, tái sử dụng URL
+              const downloadURL = uploadedFilesMap.get(fileHash);
+              const targetInput = document.getElementById(targetUrlId);
+              if (targetInput) {
+                  targetInput.value = downloadURL;
+              }
+              continue; // Bỏ qua đoạn code upload bên dưới
+          }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-    formData.append("folder", "movie_assets"); // Lưu vào thư mục movie_assets trên Cloudinary
+          // Phân loại thư mục
+          let targetFolder = "movie_assets";
+          if (targetUrlId === 'actorAvatar') {
+              targetFolder = "Dien_Vien";
+          } else if (targetUrlId === 'moviePoster' || targetUrlId === 'movieBackground') {
+              const typeSelect = document.getElementById("movieType");
+              if (typeSelect && typeSelect.value === 'single') {
+                  targetFolder = "Phim_Le";
+              } else if (typeSelect && typeSelect.value === 'series') {
+                  targetFolder = "Phim_Bo";
+              }
+          }
 
-    // 4. Gọi API Cloudinary với Timeout 30 giây
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("upload_preset", UPLOAD_PRESET);
+          formData.append("folder", targetFolder);
 
-    const response = await fetch(API_URL, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal
-    });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    clearTimeout(timeoutId);
+          const response = await fetch(API_URL, {
+              method: "POST",
+              body: formData,
+              signal: controller.signal
+          });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "Lỗi API Cloudinary");
-    }
+          clearTimeout(timeoutId);
 
-    const data = await response.json();
-    const downloadURL = data.secure_url;
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error?.message || "Lỗi API Cloudinary");
+          }
 
-    // 5. Cập nhật URL vào ô input
-    const targetInput = document.getElementById(targetUrlId);
-    if (targetInput) {
-      targetInput.value = downloadURL;
-    }
-    
-    showNotification("Đã tải ảnh lên Cloudinary thành công!", "success");
+          const data = await response.json();
+          const downloadURL = data.secure_url;
+
+          // Lưu vào map để tái sử dụng
+          uploadedFilesMap.set(fileHash, downloadURL);
+
+          // Cập nhật lại input
+          const targetInput = document.getElementById(targetUrlId);
+          if (targetInput) {
+              targetInput.value = downloadURL;
+          }
+      }
+
+      // Xóa queue
+      window.pendingUploads = {};
+      return true;
   } catch (error) {
-    console.error("Lỗi upload ảnh:", error);
-    let msg = "Lỗi khi tải ảnh lên. Hãy thử lại!";
-    
-    if (error.name === 'AbortError') {
-        msg = "Quá thời gian tải lên (30s). Vui lòng kiểm tra mạng!";
-    } else if (error.message.includes('preset')) {
-        msg = "Lỗi Preset: Hãy kiểm tra lại cấu hình Unsigned trên Cloudinary!";
-    }
-    
-    showNotification(msg, "error");
-  } finally {
-    showLoading(false);
-    input.value = ""; // Reset để có thể chọn lại cùng 1 file
+      console.error("Lỗi upload ảnh:", error);
+      let msg = "Lỗi khi tải ảnh lên Cloudinary. Đã hủy lưu dữ liệu!";
+      if (error.name === 'AbortError') {
+          msg = "Quá thời gian tải lên (30s). Vui lòng kiểm tra mạng!";
+      } else if (error.message.includes('preset')) {
+          msg = "Lỗi Preset Cloudinary!";
+      }
+      showNotification(msg, "error");
+      showLoading(false);
+      return false;
   }
 }
 
@@ -3564,3 +4030,180 @@ async function adminDeleteAllScheduled() {
 }
 
 // Schedule checker đã chuyển sang notifications.js (chạy ngầm cho mọi user)
+
+window.copyApiUrlBackup = function() {
+    const input = document.getElementById("movieApiUrlBackup");
+    if (!input || !input.value) {
+        showNotification("Không có Link API để copy!", "info");
+        return;
+    }
+    
+    navigator.clipboard.writeText(input.value)
+        .then(() => {
+            showNotification("Đã copy Link API vào khay nhớ tạm!", "success");
+        })
+        .catch(err => {
+            console.error("Lỗi copy clipboard:", err);
+            // Fallback copy logic
+            input.select();
+            document.execCommand("copy");
+            showNotification("Đã copy Link API vào khay nhớ tạm!", "success");
+        });
+}
+
+// --- SMART ACTOR SELECTION LOGIC ---
+window.selectedMovieActors = [];
+
+window.initSmartActorsFromCastString = function(castString) {
+    window.selectedMovieActors = [];
+    if (!castString) {
+        renderSelectedActors();
+        return;
+    }
+    
+    // Split by comma
+    const names = castString.split(",").map(n => n.trim()).filter(n => n);
+    names.forEach(name => {
+        // Find in allActors
+        const actorObj = allActors.find(a => 
+            a.name.toLowerCase() === name.toLowerCase() ||
+            (a.altNames || []).some(alt => alt.toLowerCase() === name.toLowerCase())
+        );
+        if (actorObj) {
+            window.selectedMovieActors.push({
+                id: actorObj.id,
+                name: actorObj.name,
+                avatar: actorObj.avatar,
+                isFallback: false
+            });
+        } else {
+            // Add as text-only fallback
+            window.selectedMovieActors.push({
+                id: 'fallback-' + Date.now() + Math.random(),
+                name: name,
+                avatar: null,
+                isFallback: true
+            });
+        }
+    });
+    
+    renderSelectedActors();
+}
+
+window.renderSelectedActors = function() {
+    const container = document.getElementById("actorPillsContainer");
+    if (!container) return;
+    
+    container.innerHTML = window.selectedMovieActors.map(actor => {
+        const avatarHtml = actor.isFallback 
+            ? `<div style="width:24px;height:24px;border-radius:50%;background:#555;display:flex;align-items:center;justify-content:center;font-size:10px;"><i class="fas fa-user"></i></div>`
+            : `<img src="${actor.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(actor.name)+'&background=random&color=fff'}" alt="${actor.name}">`;
+            
+        return `
+            <div class="actor-pill ${actor.isFallback ? 'fallback' : ''}">
+                ${avatarHtml}
+                <span>${actor.name}</span>
+                <span class="actor-pill-remove" onclick="removeActorFromMovie('${actor.id}')"><i class="fas fa-times"></i></span>
+            </div>
+        `;
+    }).join("");
+    
+    // Sync to hidden input
+    document.getElementById("movieCast").value = window.selectedMovieActors.map(a => a.name).join(", ");
+}
+
+window.searchActorInput = function(query) {
+    const dropdown = document.getElementById("actorSuggestionsDropdown");
+    if (!dropdown) return;
+    
+    if (!query || query.trim() === "") {
+        dropdown.style.display = "none";
+        return;
+    }
+    
+    const q = query.toLowerCase().trim();
+    // Lọc diễn viên có tên hoặc tên gọi khác chứa query, và chưa được chọn
+    const results = allActors.filter(a => {
+        const nameMatch = a.name.toLowerCase().includes(q);
+        const altMatch = (a.altNames || []).some(alt => alt.toLowerCase().includes(q));
+        const isNotSelected = !window.selectedMovieActors.some(sel => sel.id === a.id);
+        return (nameMatch || altMatch) && isNotSelected;
+    }).slice(0, 10); // Lấy tối đa 10 kết quả
+    
+    if (results.length === 0) {
+        dropdown.innerHTML = `<div style="padding: 10px 15px; color: var(--text-muted); font-size: 0.9rem;">Nhấn Enter để thêm "${query}"</div>`;
+    } else {
+        dropdown.innerHTML = results.map(actor => {
+            const avatarUrl = actor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=random&color=fff`;
+            return `
+                <div class="actor-suggestion-item" onmousedown="addActorToMovie('${actor.id}', '${actor.name}', '${avatarUrl}')">
+                    <img src="${avatarUrl}" alt="${actor.name}">
+                    <div class="actor-suggestion-info">
+                        <span class="actor-suggestion-name">${actor.name}</span>
+                        <span class="actor-suggestion-id">ID: ${actor.id}</span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+    
+    dropdown.style.display = "block";
+}
+
+window.addActorToMovie = function(id, name, avatar) {
+    // Check nếu đã có
+    if (window.selectedMovieActors.some(a => a.id === id)) return;
+    
+    window.selectedMovieActors.push({ id, name, avatar, isFallback: false });
+    renderSelectedActors();
+    
+    // Clear input
+    const input = document.getElementById("smartActorInput");
+    if (input) {
+        input.value = "";
+        input.focus();
+    }
+    closeActorSuggestions();
+}
+
+window.addFallbackActorToMovie = function(name) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    
+    // Check nếu đã có tên này
+    if (window.selectedMovieActors.some(a => a.name.toLowerCase() === trimmed.toLowerCase())) return;
+    
+    window.selectedMovieActors.push({
+        id: 'fallback-' + Date.now() + Math.random(),
+        name: trimmed,
+        avatar: null,
+        isFallback: true
+    });
+    renderSelectedActors();
+    
+    // Clear input
+    const input = document.getElementById("smartActorInput");
+    if (input) input.value = "";
+    closeActorSuggestions();
+}
+
+window.removeActorFromMovie = function(id) {
+    window.selectedMovieActors = window.selectedMovieActors.filter(a => a.id !== id);
+    renderSelectedActors();
+}
+
+window.closeActorSuggestions = function() {
+    const dropdown = document.getElementById("actorSuggestionsDropdown");
+    if (dropdown) dropdown.style.display = "none";
+}
+
+window.handleSmartActorKeyDown = function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Tránh submit form
+        const input = document.getElementById("smartActorInput");
+        if (input && input.value.trim() !== "") {
+            addFallbackActorToMovie(input.value);
+        }
+    }
+}
+

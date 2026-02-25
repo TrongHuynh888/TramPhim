@@ -318,7 +318,8 @@ body.cinema-mode .episodes-section,
 body.cinema-mode .comments-section,
 body.cinema-mode #versionContainer,
 body.cinema-mode #relatedPartsContainer,
-body.cinema-mode .reaction-sidebar {
+body.cinema-mode .reaction-sidebar,
+body.cinema-mode .detail-main-grid {
     display: none !important;
 }
 
@@ -490,9 +491,9 @@ body.cinema-mode.controls-visible .detail-toolbar {
 
 .info-layout {
     display: grid;
-    grid-template-columns: 100px 1fr;
-    gap: 25px; /* Giảm gap một chút cho cân đối với poster nhỏ */
-    align-items: flex-start;
+    grid-template-columns: 100px 1fr 280px; /* Poster, Info, Actors */
+    gap: 30px; 
+    align-items: start;
 }
 
 .info-poster-wrapper {
@@ -668,11 +669,121 @@ body.cinema-mode.controls-visible .detail-toolbar {
     padding: 0 40px !important;
 }
 
+/* --- DETAIL MAIN GRID (Episodes + Comments) --- */
+.detail-main-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    padding: 20px 40px 0 40px;
+}
+
+.detail-main-col {
+    width: 100%;
+}
+
+/* --- ACTOR SIDEBAR (Now in info-layout) --- */
+.detail-sidebar-col {
+    display: none; /* Element removed from HTML, hiding just in case */
+}
+
+.detail-actor-sidebar {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 12px;
+}
+
+.sidebar-title i {
+    color: var(--accent-primary);
+    font-size: 14px;
+}
+
+.sidebar-actor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.sidebar-actor-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    text-decoration: none;
+}
+
+.sidebar-actor-item:hover {
+    transform: translateY(-3px);
+}
+
+.sidebar-actor-item img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sidebar-actor-item:hover img {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 12px rgba(229, 9, 20, 0.3);
+}
+
+.sidebar-actor-name {
+    font-size: 0.72rem;
+    color: var(--text-secondary, #aaa);
+    text-align: center;
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.sidebar-actor-item:hover .sidebar-actor-name {
+    color: #fff;
+}
+
+/* Light theme cho sidebar */
+[data-theme="light"] .detail-actor-sidebar {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+}
+
+[data-theme="light"] .sidebar-title {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="light"] .sidebar-actor-item img {
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .sidebar-actor-item:hover .sidebar-actor-name {
+    color: var(--text-primary);
+}
+
 /* --- EPISODES LIST REDESIGN --- */
 .episodes-section {
     background: rgba(255,255,255,0.02);
     padding: 30px;
-    margin: 20px 40px 0 40px; /* Thêm lề 2 bên (40px) để đồng bộ với phần trên */
     border-radius: 16px;
 }
 
@@ -738,6 +849,7 @@ body.cinema-mode.controls-visible .detail-toolbar {
 @media (max-width: 768px) {
     .info-layout {
         grid-template-columns: 1fr;
+        gap: 20px;
     }
     .info-poster-wrapper {
         max-width: 200px;
@@ -750,6 +862,19 @@ body.cinema-mode.controls-visible .detail-toolbar {
     .info-meta {
         justify-content: center;
     }
+    
+    /* Actor sidebar on mobile */
+    .detail-actor-sidebar {
+        margin-top: 10px;
+    }
+    .sidebar-actor-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .sidebar-actor-item img {
+        width: 50px;
+        height: 50px;
+    }
+
     .episodes-list {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }

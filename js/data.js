@@ -42,18 +42,32 @@ const SAMPLE_MOVIES = [
 ];
 
 /**
+ * Danh sách diễn viên (Actors)
+ */
+async function loadActors() {
+  try {
+    const snapshot = await db.collection("actors").get();
+    allActors = snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    }));
+  } catch (error) {
+    console.error("Lỗi load diễn viên:", error);
+    allActors = [];
+  }
+}
+
+/**
  * Load dữ liệu ban đầu
  */
 async function loadInitialData() {
   try {
-    // Load categories
-    await loadCategories();
-
-    // Load countries
-    await loadCountries();
-
-    // Load movies
-    await loadMovies();
+    await Promise.all([
+      loadCategories(),
+      loadCountries(),
+      loadMovies(),
+      loadActors() // Tải thêm thông tin diễn viên
+    ]);
 
     // Populate filter dropdowns
     populateFilters();

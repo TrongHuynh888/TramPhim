@@ -342,6 +342,9 @@ async function viewMovieDetail(movieId, updateHistory = true) {
   // 10. Cập nhật giao diện Redesign mới
   updateDetailRedesignUI(movie);
 
+  // 10.1 Render sidebar diễn viên
+  renderDetailActorSidebar(movie);
+
   // 11. Chuyển trang
   showPage("movieDetail", false); // Không push state ở đây để tránh duplicate ?page=
   
@@ -390,6 +393,46 @@ function updateDetailRedesignUI(movie) {
             likeBtn.innerHTML = '<i class="far fa-heart"></i> Yêu thích';
         }
     }
+}
+
+/**
+ * Render sidebar diễn viên cho trang chi tiết phim
+ */
+function renderDetailActorSidebar(movie) {
+    const grid = document.getElementById("detailActorGrid");
+    if (!grid) return;
+
+    if (!movie.cast) {
+        grid.innerHTML = '<p style="color: #888; font-size: 13px; text-align: center;">Chưa có thông tin diễn viên.</p>';
+        return;
+    }
+
+    const names = movie.cast.split(",").map(n => n.trim()).filter(n => n);
+
+    grid.innerHTML = names.map(name => {
+        // Tra cứu ảnh thật từ allActors
+        let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=120&bold=true&font-size=0.35`;
+
+        if (typeof allActors !== 'undefined' && allActors) {
+            const q = name.toLowerCase();
+            const dbActor = allActors.find(a => {
+                if (a.name.toLowerCase() === q) return true;
+                if (a.altNames && a.altNames.some(alt => alt.toLowerCase() === q)) return true;
+                return false;
+            });
+            if (dbActor && dbActor.avatar) {
+                avatarUrl = dbActor.avatar;
+            }
+        }
+
+        const safeName = name.replace(/'/g, "\\'");
+        return `
+            <div class="sidebar-actor-item" onclick="viewActorDetail('${safeName}')" title="${name}">
+                <img src="${avatarUrl}" alt="${name}" loading="lazy">
+                <span class="sidebar-actor-name">${name}</span>
+            </div>
+        `;
+    }).join("");
 }
 
 // --- LOGIC ẨN HIỆN TOOLBAR TRONG CINEMA MODE ---

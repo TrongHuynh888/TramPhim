@@ -46,6 +46,14 @@
         </div>
         <div
           class="admin-nav-item"
+          data-panel="actors"
+          onclick="showAdminPanel('actors')"
+        >
+          <i class="fas fa-user-tie"></i>
+          <span>Diễn viên</span>
+        </div>
+        <div
+          class="admin-nav-item"
           data-panel="users"
           onclick="showAdminPanel('users')"
         >
@@ -348,6 +356,67 @@
               </tr>
             </thead>
             <tbody id="adminCountriesTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Actors Panel -->
+      <div class="admin-panel" id="actorsPanel">
+        <div class="admin-panel-header">
+          <h2 class="admin-panel-title">Quản lý Diễn Viên</h2>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-success" onclick="toggleActorApiImport()">
+              <i class="fas fa-cloud-download-alt"></i> Import từ API
+            </button>
+            <button class="btn btn-primary" onclick="openActorModal()">
+              <i class="fas fa-plus"></i> Thêm Diễn Viên
+            </button>
+          </div>
+        </div>
+
+        <!-- Khung Import Diễn Viên từ OPhim API -->
+        <div id="actorApiImportBox" style="display: none; background: rgba(81, 207, 102, 0.08); border: 1px dashed #51cf66; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+            <label class="form-label" style="color: #51cf66; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-users"></i> Import diễn viên từ OPhim (TMDB)
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" class="form-input" id="actorApiSlugInput" placeholder="Nhập slug phim (VD: tieng-yeu-nay-anh-dich-duoc-khong)" style="flex: 1;">
+                <button type="button" class="btn btn-success" onclick="fetchActorsFromAPI()" style="white-space: nowrap;">
+                    <i class="fas fa-search"></i> Quét diễn viên
+                </button>
+            </div>
+            <small class="text-muted" style="display: block; margin-top: 8px; font-size: 0.8rem;">
+                * Nhập slug phim từ OPhim. Hệ thống sẽ quét danh sách diễn viên, so sánh với kho hiện tại, và tự động thêm những người chưa có.
+            </small>
+            <div id="actorApiImportResults" style="margin-top: 12px;"></div>
+        </div>
+
+        <div class="search-filter mb-3">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              class="form-input"
+              id="adminSearchActor"
+              placeholder="Tìm tên diễn viên..."
+              oninput="renderAdminActors()"
+            />
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 50px">STT</th>
+                <th>Hình Ảnh</th>
+                <th>Tên Diễn Viên</th>
+                <th>Giới tính</th>
+                <th>Ngày sinh</th>
+                <th style="width: 120px">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="adminActorsTable"></tbody>
           </table>
         </div>
       </div>
@@ -776,6 +845,101 @@
     </div>
     <div class="modal-body" style="padding: 0; text-align: center;">
       <img id="billViewportImage" src="" alt="Bill View" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+    </div>
+  </div>
+</div>
+
+<!-- Modal Thêm/Sửa Diễn Viên -->
+<div class="modal-overlay" id="actorModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="actorModalTitle">Thêm Diễn Viên Mới</h3>
+      <button class="modal-close" onclick="closeModal('actorModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="actorForm" onsubmit="handleActorSubmit(event)">
+        <input type="hidden" id="actorId" />
+        
+        <div class="form-group" style="text-align: center; margin-bottom: 20px;" id="actorAvatarPreviewWrapper">
+          <img id="actorAvatarPreview" src="https://ui-avatars.com/api/?name=Actor&background=random&color=fff&size=120" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.1); margin-bottom: 15px;" alt="Avatar Preview">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tên Diễn Viên <span style="color:red">*</span></label>
+          <input
+            type="text"
+            class="form-input"
+            id="actorName"
+            required
+            placeholder="Nhập tên diễn viên (VD: Tom Cruise)"
+            oninput="updateActorPreview();"
+          />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Link Ảnh / Avatar (Tùy chọn)</label>
+          <div class="input-with-action" style="display: flex; gap: 8px;">
+            <input
+              type="url"
+              class="form-input"
+              id="actorAvatar"
+              placeholder="https://..."
+              style="flex: 1;"
+              oninput="updateActorPreview()"
+            />
+            <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('actorAvatarUpload').click()" style="white-space: nowrap;">
+              <i class="fas fa-upload"></i> Tải lên
+            </button>
+            <input type="file" id="actorAvatarUpload" accept="image/*" style="display: none;" onchange="uploadMovieImage(this, 'actorAvatar', 'actorAvatarPreviewWrapper')">
+          </div>
+          <small class="text-muted" style="display: block; margin-top: 5px;">Mặc định dùng ảnh tự sinh từ tên nếu để trống.</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tên gọi khác <small style="opacity:0.6">(ngăn cách bằng dấu phẩy)</small></label>
+          <input
+            type="text"
+            class="form-input"
+            id="actorAltNames"
+            placeholder="VD: 김선호, Kim Seonho, Kim Sun Ho"
+          />
+          <small class="text-muted" style="display: block; margin-top: 5px;">Tên tiếng Hàn, tiếng Trung, hoặc biệt danh khác. Giúp tìm nhanh khi thêm phim.</small>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group">
+            <label class="form-label">Giới tính</label>
+            <select class="form-select" id="actorGender">
+              <option value="">Không rõ</option>
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày sinh</label>
+            <input type="date" class="form-input" id="actorDob" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Giới thiệu ngắn gọn</label>
+          <textarea
+            class="form-textarea"
+            id="actorBio"
+            rows="3"
+            placeholder="Thông tin về diễn viên này..."
+          ></textarea>
+        </div>
+
+        <div class="form-actions" style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('actorModal')">
+            Hủy
+          </button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

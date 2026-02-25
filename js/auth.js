@@ -529,6 +529,74 @@ function updateAuthUI(isLoggedIn) {
   }
 }
 /**
+ * Mở modal Đổi mật khẩu
+ */
+function openChangePasswordModal() {
+  if (!currentUser) return;
+  
+  // Đóng dropdown trước khi mở modal
+  const dropdown = document.getElementById("userDropdown");
+  if (dropdown) dropdown.classList.remove("active");
+  
+  document.getElementById("changePasswordForm").reset();
+  openModal("changePasswordModal");
+}
+
+/**
+ * Xử lý đổi mật khẩu
+ */
+async function handleChangePassword(event) {
+  event.preventDefault();
+
+  const oldPassword = document.getElementById("oldPassword").value;
+  const newPassword = document.getElementById("newPassword").value;
+  const confirmNewPassword = document.getElementById("confirmNewPassword").value;
+
+  if (newPassword !== confirmNewPassword) {
+    showNotification("Mật khẩu xác nhận không khớp!", "warning");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    showNotification("Mật khẩu mới phải có ít nhất 6 ký tự!", "warning");
+    return;
+  }
+
+  try {
+    showLoading(true, "Đang xử lý...");
+
+    // Xác thực lại người dùng bằng mật khẩu cũ
+    const credential = firebase.auth.EmailAuthProvider.credential(
+      currentUser.email,
+      oldPassword
+    );
+
+    // Dùng reauthenticateWithCredential vì reauthenticateWithPopup/Redirect không tốt trên giao diện này
+    // Firebase Web v8
+    await currentUser.reauthenticateWithCredential(credential);
+
+    // Cập nhật mật khẩu mới
+    await currentUser.updatePassword(newPassword);
+
+    showNotification("Đổi mật khẩu thành công!", "success");
+    closeModal("changePasswordModal");
+  } catch (error) {
+    console.error("Lỗi đổi mật khẩu:", error);
+    let msg = "Đổi mật khẩu thất bại!";
+    if (error.code === "auth/wrong-password") {
+      msg = "Mật khẩu hiện tại không đúng!";
+    } else if (error.code === "auth/too-many-requests") {
+      msg = "Thử quá nhiều lần, vui lòng thử lại sau!";
+    } else if (error.code === "auth/requires-recent-login") {
+      msg = "Khuôn khổ bảo mật: Vui lòng đăng xuất và đăng nhập lại trước khi đổi mật khẩu!";
+    }
+    showNotification(msg, "error");
+  } finally {
+    showLoading(false);
+  }
+}
+
+/**
  * Hàm xử lý click bên trong dropdown (Tách ra để tránh duplicate event)
  */
 function handleDropdownItemClick(e) {

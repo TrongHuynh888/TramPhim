@@ -11,7 +11,7 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 2000;
   background: var(--bg-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -656,9 +656,9 @@
   height: 100%;
   z-index: 1;
 }
-/* Khi popup hiện lên thì wrapper phải có z-index cao nhất */
+/* Khi popup hiện lên thì wrapper phải có z-index cao nhất trong khu vực nội dung (dưới navbar) */
 .movie-card-wrapper:hover {
-  z-index: 1000;
+  z-index: 900;
 }
 
 .movie-card-static {
@@ -728,7 +728,7 @@
   border-radius: 8px;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
-  z-index: 9999;
+  z-index: 950;
 
   /* Ẩn mặc định */
   opacity: 0;
@@ -753,7 +753,7 @@
   box-shadow:
     0 20px 50px rgba(0, 0, 0, 0.8),
     0 0 25px rgba(229, 9, 20, 0.3);
-  z-index: 10000;
+  z-index: 990;
 }
 
 /* Các phần bên trong giữ nguyên */
@@ -1008,7 +1008,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 5000;
   opacity: 0;
   visibility: hidden;
   transition: all var(--transition-normal);
@@ -1265,7 +1265,7 @@
   position: fixed;
   top: 90px;
   right: var(--spacing-lg);
-  z-index: 3000;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -1739,3 +1739,379 @@
   border-color: rgba(0, 0, 0, 0.2) !important;
   color: #000 !important;
 }
+
+/* ============================================
+   TRANG DIỄN VIÊN (ACTORS PAGE)
+   ============================================ */
+
+/* --- Grid danh sách diễn viên --- */
+.actors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.actor-card {
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 12px;
+  padding: 15px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+}
+
+.actor-card:hover {
+  transform: translateY(-8px);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--accent-primary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.actor-card-avatar {
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.3s ease;
+}
+
+.actor-card:hover .actor-card-avatar {
+  border-color: var(--accent-primary);
+}
+
+.actor-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.actor-card:hover .actor-card-avatar img {
+  transform: scale(1.1);
+}
+
+.actor-card-name {
+  font-family: "Montserrat", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 5px;
+}
+
+/* --- Trang chi tiết diễn viên --- */
+.actor-detail-layout {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 40px 40px;
+}
+
+.actor-detail-topbar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.actor-detail-page-title {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.actor-detail-body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 40px;
+  padding-bottom: 40px;
+}
+
+/* Sidebar thông tin */
+.actor-info-sidebar {
+  position: sticky;
+  top: 90px;
+  align-self: start;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 25px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.actor-info-avatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 0 auto 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.actor-info-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.actor-info-name {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+}
+
+.actor-info-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.btn-actor-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-actor-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.actor-info-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actor-meta-item {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.actor-meta-item .meta-label {
+  color: var(--text-primary);
+}
+
+/* Phần danh sách phim */
+.actor-movies-section {
+  min-width: 0;
+}
+
+.actor-movies-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.actor-movies-header h3 {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* Nút toggle xem */
+.actor-view-toggle {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.actor-toggle-btn {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actor-toggle-btn.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.actor-toggle-btn:not(.active):hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Grid phim */
+.actor-movies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px;
+}
+
+.actor-movie-card {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.actor-movie-card:hover {
+  transform: translateY(-5px);
+}
+
+.actor-movie-poster {
+  position: relative;
+  aspect-ratio: 2/3;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.actor-movie-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.actor-movie-card:hover .actor-movie-poster img {
+  transform: scale(1.08);
+}
+
+.actor-movie-quality {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.actor-movie-info {
+  padding: 8px 2px;
+}
+
+.actor-movie-title {
+  font-family: "Montserrat", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actor-movie-origin {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Timeline View --- */
+.timeline-year-group {
+  position: relative;
+  padding-left: 40px;
+  margin-bottom: 30px;
+  border-left: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+.timeline-year-marker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  position: absolute;
+  left: -7px;
+  box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);
+}
+
+.timeline-year {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  opacity: 0.6;
+}
+
+.timeline-movies-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+}
+
+/* --- Light Mode --- */
+[data-theme="light"] .actor-card {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .actor-card:hover {
+  background: rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .actor-card-avatar {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .btn-actor-action {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .actor-view-toggle {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .actor-toggle-btn.active {
+  background: var(--bg-primary);
+  color: #fff;
+}
+
+[data-theme="light"] .timeline-year-group {
+  border-left-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .actor-info-sidebar {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .actor-detail-topbar {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+

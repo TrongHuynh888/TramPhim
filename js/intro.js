@@ -99,8 +99,8 @@ async function viewMovieIntro(movieId, updateHistory = true) {
     setTextContent("introCategory", (movie.categories && movie.categories.length > 0) ? movie.categories.join(', ') : (movie.category || "Phim lẻ"));
     setTextContent("introRating", movie.rating || "N/A");
     
-    // -- Info New Fields (Cast, Version)
-    setTextContent("introCast", movie.cast || "Đang cập nhật...");
+    // -- Info New Fields (Cast, Version) — Render dạng avatar chips
+    renderIntroCastChips(movie.cast);
     
     // -- Versions (Dynamic Buttons)
     const versionContainer = document.getElementById("introVersionList");
@@ -201,6 +201,46 @@ async function viewMovieIntro(movieId, updateHistory = true) {
     
     // Cuộn lên đầu
     window.scrollTo(0, 0);
+}
+
+/**
+ * Render danh sách diễn viên dạng avatar chips (ảnh tròn + tên)
+ */
+function renderIntroCastChips(castString) {
+    const container = document.getElementById("introCast");
+    if (!container) return;
+
+    if (!castString) {
+        container.innerHTML = '<span class="info-value">Đang cập nhật...</span>';
+        return;
+    }
+
+    const names = castString.split(",").map(n => n.trim()).filter(n => n);
+    
+    container.innerHTML = names.map(name => {
+        // Tra cứu diễn viên trong database
+        let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=80&bold=true&font-size=0.4`;
+        
+        if (typeof allActors !== 'undefined' && allActors) {
+            const q = name.toLowerCase();
+            const dbActor = allActors.find(a => {
+                if (a.name.toLowerCase() === q) return true;
+                if (a.altNames && a.altNames.some(alt => alt.toLowerCase() === q)) return true;
+                return false;
+            });
+            if (dbActor && dbActor.avatar) {
+                avatarUrl = dbActor.avatar;
+            }
+        }
+        
+        const safeName = name.replace(/'/g, "\\'");
+        return `
+            <div class="cast-chip" onclick="viewActorDetail('${safeName}')" title="${name}">
+                <img src="${avatarUrl}" alt="${name}" loading="lazy">
+                <span>${name}</span>
+            </div>
+        `;
+    }).join("");
 }
 
 /**

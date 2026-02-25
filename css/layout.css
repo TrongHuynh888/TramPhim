@@ -330,6 +330,8 @@
   padding: var(--spacing-xxl) 40px;
   max-width: 100%;
   margin: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .section-header {
@@ -342,6 +344,7 @@
   font-size: var(--font-xxl);
   position: relative;
   padding-left: var(--spacing-md);
+  z-index: 2; /* Ép thấp hơn navbar */
 }
 .section-title::before {
   content: "";
@@ -1584,6 +1587,9 @@ video::-webkit-media-controls-enclosure {
   position: relative;
   display: flex;
   align-items: center;
+  /* FIX LỖI XOAY NGANG TABLET: Ngăn flex-item nở ra theo kích thước content (2500px+) */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .country-movies-row {
@@ -1591,16 +1597,32 @@ video::-webkit-media-controls-enclosure {
   gap: 20px;
   overflow-x: auto;
   scroll-behavior: smooth;
-  padding: 120px 40px 100px; /* Tăng padding cực đại phía trên */
+  padding: 120px 30px 100px; /* Tăng padding cực đại phía trên. Chỉnh padding trái/phải thành 30px để bù trừ hoàn hảo */
   margin-top: -110px; /* Kéo lên vừa đủ để cân đối và giữ space cho popup */
-  margin-left: -35px;
+  margin-left: -30px; /* Bù trừ chính xác khối padding 30px của wrapper gốc để thẻ đầu tiên canh thẳng tắp với sidebar bên trái */
   margin-bottom: -70px;
   scrollbar-width: none;
-  width: calc(100% + 70px);
+  width: calc(100% + 60px); /* Bù lại đúng 60px (30 trái + 30 phải) */
 }
 
 .country-movies-row::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
+}
+
+/* --- KÉO CHUỘT ĐỂ CUỘN TRÊN PC (DRAG TO SCROLL) --- */
+.country-movies-row {
+  cursor: grab; /* Biểu tượng bàn tay mở mặc định */
+}
+
+.country-movies-row.active-drag {
+  cursor: grabbing; /* Bàn tay nắm lại khi đang kéo */
+  scroll-behavior: auto; /* Tắt cuộn mượt mặc định để quá trình kéo bằng JavaScript ăn chuột ngay lập tức */
+}
+
+/* Ngăn không cho chọn văn bản hoặc click nhầm phim khi đang vuốt ngang */
+.country-movies-row.active-drag .movie-card-landscape {
+  pointer-events: none; 
+  user-select: none;
 }
 
 /* Thẻ phim Landscape (16:9) */
@@ -2253,5 +2275,15 @@ video::-webkit-media-controls-enclosure {
   .ep-panel-item {
     font-size: 13px;
     padding: 8px 10px;
+  }
+}
+
+/* --- FIX DUPLICATE MARQUEE ON PC ---
+   Bản sao metadata chỉ dành cho hiệu ứng chữ chạy trên điện thoại.
+   Trên PC/Tablet, chữ đứng yên theo dòng nên phải ẩn bản sao đi để tránh lặp.
+*/
+@media (min-width: 769px) {
+  .mobile-only-marquee {
+    display: none !important;
   }
 }

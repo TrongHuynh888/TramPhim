@@ -73,17 +73,15 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
     display: none !important; /* Ẩn thumbnails trên tablet */
   }
 
-  /* --- FIX POPUP CHO TABLET (iPad) --- */
-  /* CHỈ ÁP DỤNG TỪ 769px ĐẾN 1366px (Tablet) - KHÔNG ẢNH HƯỞNG MOBILE */
-  @media (min-width: 769px) {
-    /* Ẩn popup hover mặc định (để dùng click) */
-    .movie-card-wrapper .movie-popup-nfx {
-      display: none !important;
-    }
+  /* --- FIX POPUP DÀNH CHO CẢ MOBILE (<768PX) & TABLET (769-1366PX) --- */
+  /* Ẩn popup hover mặc định (để dùng click) */
+  .movie-card-wrapper .movie-popup-nfx {
+    display: none !important;
+  }
 
     /* Class kích hoạt popup khi chạm */
     .movie-card-wrapper.active-mobile {
-      z-index: 5000 !important;
+      z-index: 900 !important;
       position: relative;
     }
 
@@ -97,14 +95,16 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
       left: 50%;
       transform: translate(-50%, -50%) scale(1.05) !important; /* Scale nhẹ lại cho đỡ thô */
 
-      /* Kích thước Tablet: Đồng bộ PC nhưng linh hoạt */
-      width: 350px !important; 
+      /* Kích thước Tablet & Mobile (Mobile sẽ bị override ở dưới) */
+      width: 420px !important; 
       max-width: 90vw !important;
       height: auto;
-      z-index: 9999 !important; /* Đẩy lên cao nhất để không bị chữ ở dưới đè */
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 1) !important; /* Bóng đổ đặc hoàn toàn */
+      max-height: 90vh !important;
+      overflow-y: auto !important;
+      z-index: 950 !important;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 1) !important;
       border: 1px solid var(--accent-primary);
-      background: #1f1f2e !important; /* Nền tối đặc hoàn toàn */
+      background: #1f1f2e !important;
       color: #fff !important;
       opacity: 1 !important;
       visibility: visible !important;
@@ -118,58 +118,93 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
         pointer-events: none !important;
     }
 
-    /* ÉP OVERFLOW CHO CHUỖI CONTAINER CHA TRÊN TABLET */
-    .country-section,
-    .country-movies-wrapper,
-    .country-movies-row {
-        overflow: visible !important;
-    }
-
     /* FIX STACKING CONTEXT: Nâng section chứa popup lên trên các section khác */
     .section-active-popup {
-        z-index: 9999 !important;
+        z-index: 1500 !important;
         position: relative !important;
     }
 
-    /* Font chữ Popup Tablet (Đồng bộ PC) */
+    /* Font chữ Popup Tablet */
     .movie-card-wrapper.active-mobile .popup-header-img {
-      height: 180px !important; /* Thu gọn thêm để không bị dài */
+      height: 200px !important; /* Tăng chiều cao ảnh trên tablet để khoe background đẹp */
     }
     .movie-card-wrapper.active-mobile .popup-body {
-      padding: 12px 16px !important; /* Giảm padding cho gọn */
+      padding: 15px 20px !important; /* Nới lỏng padding cho thoáng */
     }
     .movie-card-wrapper.active-mobile .popup-title-new {
-      font-size: 20px !important; /* Giảm từ 32px về gần PC */
-      margin-bottom: 10px;
-      line-height: 1.3;
+      font-size: 18px !important; /* Cân đối lại cỡ chữ tiêu đề */
+      margin-bottom: 8px !important;
+      line-height: 1.2 !important;
       color: #ffeb3b !important;
       font-weight: 700 !important;
     }
+    .movie-card-wrapper.active-mobile .popup-actions {
+      margin-bottom: 12px !important;
+    }
+    /* Hiệu ứng chữ chạy (Marquee) vòng tuần hoàn vô tận - News Ticker Style */
+    @keyframes marquee-infinite {
+      0% { transform: translateX(0); } 
+      100% { transform: translateX(-100%); /* Chạy hết 100% chiều dài block con */ }
+    }
+    
     .movie-card-wrapper.active-mobile .popup-meta-row {
-      font-size: 14px !important;
-      gap: 10px;
-      margin-bottom: 8px;
+      display: flex !important;
+      font-size: 13px !important; /* Tăng cỡ chữ meta trên tablet cho dễ đọc */
+      margin-bottom: 8px !important; /* Khoảng cách dọc đều hơn */
+      flex-wrap: nowrap !important; 
+      overflow: hidden; 
+      width: 100% !important;
+      gap: 10px !important; /* Tăng khoảng cách giữa các tag */
+      padding-left: 0 !important; /* Loại bỏ thụt lề dư thừa để canh đều lề trái 20px chung */
     }
-    .movie-card-wrapper.active-mobile .popup-meta-row span {
-      color: #0fceeb !important;
+
+    .movie-card-wrapper.active-mobile .marquee-content {
+      display: flex !important;
+      flex-shrink: 0;
+      gap: 12px; /* Khoảng cách giữa các nhãn con */
+      padding-right: 40px; 
+      animation: none !important; /* Mặc định không chạy (cho Tablet) */
     }
+
+    .movie-card-wrapper.active-mobile .marquee-duplicate {
+      display: none !important; /* Ẩn bản sao trên Tablet */
+    }
+    
+    .movie-card-wrapper.active-mobile .marquee-content span {
+       white-space: nowrap !important;
+       color: #0fceeb !important;
+    }
+    
+    /* Trên Tablet, không cần fade mờ vì chữ đã hiển thị đủ */
+    .movie-card-wrapper.active-mobile .popup-body {
+      overflow: hidden; 
+      mask-image: none !important;
+      -webkit-mask-image: none !important;
+    }
+
     .movie-card-wrapper.active-mobile .btn-popup-play {
-      font-size: 14px !important;
-      padding: 8px 16px;
-      height: 42px;
+      font-size: 13px !important;
+      padding: 6px 12px;
+      height: 36px;
     }
     .movie-card-wrapper.active-mobile .btn-popup-icon {
-      width: 42px;
-      height: 42px;
-      font-size: 18px;
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
       background: rgba(255, 255, 255, 0.15) !important;
       color: #fff !important;
       border: 1px solid rgba(255, 255, 255, 0.3) !important;
     }
 
+    /* --- FIX LỖI CHÌM ĐÁY BỊ CẮT CHỮ TRÊN BĂNG CHUYỀN --- */
+    .country-movies-row {
+        padding-bottom: 200px !important; /* Tạo thêm vùng không gian bên dưới để popup rơi xuống mà không bị cắt */
+        margin-bottom: -160px !important; /* Triệt tiêu vùng không gian dư thừa, giữ nguyên bố cục tổng thể */
+    }
+
     /* --- TABLET: LANDSCAPE MOVIE CARD POPUP (16:9) --- */
     .movie-card-landscape.active-mobile .movie-popup-nfx {
-        width: 380px !important; /* Landscape tablet hơi rộng hơn portrait xíu */
+        width: 340px !important; /* Thu nhỏ mạnh mẽ hơn nữa để vừa khít tuyệt đối với 3 nút */
     }
     .movie-card-landscape.active-mobile .popup-title-main {
         font-size: 20px !important;
@@ -178,18 +213,35 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
     .movie-card-landscape.active-mobile .popup-genres-text {
         font-size: 14px !important;
         color: #ccc !important;
+        padding-bottom: 5px !important; /* Đệm nhẹ mép dưới để text không sát viền */
     }
     .movie-card-landscape.active-mobile .btn-play-pink {
-        font-size: 18px !important;
-        padding: 12px 24px !important;
+        font-size: 14px !important; /* Hạ xuống 14px để cả 3 nút đồng bộ */
+        padding: 9px 5px !important; /* Tối ưu đệm nút */
+        flex: 1 !important; /* Chia đều không gian */
+        justify-content: center !important;
+        white-space: nowrap !important; /* Ngăn chữ rớt dòng làm nút bị to ra */
     }
     .movie-card-landscape.active-mobile .btn-action-glass {
-        padding: 10px 18px !important;
-        font-size: 16px !important;
+        padding: 9px 5px !important; /* Tối ưu đệm nút */
+        font-size: 14px !important; /* Thu gọn chữ nút */
+        flex: 1 !important; /* Chia đều không gian */
+        justify-content: center !important;
+        white-space: nowrap !important; /* Ngăn phân mảnh chữ */
     }
     .movie-card-landscape.active-mobile .badge-item {
         font-size: 14px !important;
         padding: 4px 10px !important;
+    }
+
+    .movie-card-landscape.active-mobile .popup-body {
+        padding: 15px !important; /* Đảm bảo lề trái và lề phải đều đặn 15px */
+    }
+    .movie-card-landscape.active-mobile .popup-actions {
+        gap: 8px !important; /* Kéo 3 nút sát lại để vừa vặn trong 340px */
+        margin-top: 15px !important;
+        flex-wrap: nowrap !important;
+        justify-content: center !important; /* Căn giữa 3 nút để khoảng trống 2 bên đều nhau tuyệt đối */
     }
     
     /* --- SMART POSITIONING (XỬ LÝ TRÀN MÀN HÌNH) --- */
@@ -210,32 +262,29 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
     
     .movie-card-wrapper.active-mobile .popup-genres-row {
       display: flex !important;
-      font-size: 22px !important; 
-      margin-top: 5px; 
+      font-size: 14px !important; /* Cỡ chữ trung gian giữa Tiêu đề và Meta */
+      margin-top: 0 !important;
+      margin-bottom: 4px !important;
+      align-items: center;
+      flex-wrap: nowrap !important;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .movie-card-wrapper.active-mobile .popup-genres-row .desktop-genres {
+      display: none !important; /* Ẩn thể loại dài trên PC */
+    }
+    .movie-card-wrapper.active-mobile .popup-genres-row .mobile-genres {
+      display: inline-block !important; /* Hiện thể loại ngắn trên Mobile */
+    }
+    .movie-card-wrapper.active-mobile .popup-genres-row .popup-country {
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
 
-    /* --- FIX TRIỆT ĐỂ LỖI CUỘN TRANG & TRÀN VIỀN TABLET --- */
-    /* Tạo không gian ảo phía trên và dưới hàng phim để popup có chỗ "bay" ra ngoài */
-    .country-movies-wrapper {
-        overflow: visible !important;
-        padding-top: 50px !important;
-        padding-bottom: 50px !important;
-        margin-top: -50px !important;
-        margin-bottom: -50px !important;
-    }
-    .country-movies-row {
-        overflow: visible !important;
-        padding-top: 150px !important;
-        padding-bottom: 150px !important;
-        margin-top: -150px !important;
-        margin-bottom: -150px !important;
-        pointer-events: none; /* Tránh block click vào nền */
-    }
-    .country-movies-row > * {
-        pointer-events: auto; /* Cho phép click vào movie card */
-    }
-  }
-
+    /* --- BỎ TRIỆT ĐỂ OVERFLOW VISIBLE PHÁ VỠ SCROLL --- */
+    /* Padding/margin hacks from layout.css already handle clipping. Do not override them with visible, which expands viewport to 2000px+ */
+  /* END FIX POPUP MOBILE/TABLET */
+  
   /* FIX MENU TABLET: Scroll ngang mượt mà */
   .nav-menu {
     overflow-x: auto !important;
@@ -875,20 +924,33 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
 
   /* Font chữ Popup nhỏ lại */
   .movie-card-wrapper.active-mobile .popup-header-img {
-    height: 110px;
+    height: 110px !important;
   }
   .movie-card-wrapper.active-mobile .popup-body {
-    padding: 8px;
+    padding: 8px !important;
   }
   .movie-card-wrapper.active-mobile .popup-title-new {
-    font-size: 13px;
-    margin-bottom: 4px;
-    line-height: 1.3;
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+    line-height: 1.3 !important;
   }
   .movie-card-wrapper.active-mobile .popup-meta-row {
     font-size: 9px;
     gap: 4px;
     margin-bottom: 6px;
+    /* CHỈ LÀM MỜ BÊN PHẢI: Tránh che khuất/cắt chữ bên trái khi mới mở popup */
+    mask-image: linear-gradient(to right, black 0%, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 0%, black 85%, transparent 100%);
+  }
+
+  /* RE-ENABLE MARQUEE ONLY FOR MOBILE */
+  .movie-card-wrapper.active-mobile .marquee-content {
+    transform: translateX(0); /* Đảm bảo vị trí ban đầu luôn là 0 */
+    animation: marquee-infinite 12s linear infinite !important;
+    animation-delay: 1.5s !important; /* Đứng yên 1.5s sau khi mở popup trước khi bắt đầu chạy */
+  }
+  .movie-card-wrapper.active-mobile .marquee-duplicate {
+    display: flex !important;
   }
   .movie-card-wrapper.active-mobile .btn-popup-play {
     font-size: 11px !important;
@@ -909,14 +971,11 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
 
   /* --- MOBILE: LANDSCAPE MOVIE CARD POPUP (16:9) --- */
   .movie-card-landscape.active-mobile .movie-popup-nfx {
-      width: 210px !important; /* Thu nhỏ về gần 200px của portrait */
+      width: 260px !important; /* Nới rộng đủ chỗ cho 3 nút trên 1 hàng ngang */
       max-width: 95vw !important;
   }
   .movie-card-landscape.active-mobile .popup-header-img {
       height: 100px !important; /* Thu gọn chiều cao ảnh header landscape cho cân đối */
-  }
-  .movie-card-landscape.active-mobile .popup-header-img {
-      height: 100px !important; /* Thu gọn đồng nhất 100px */
   }
   .movie-card-landscape.active-mobile .landscape-img-container {
       height: 80px !important; /* Thu nhỏ container ảnh nền của thẻ gốc khi active */
@@ -928,13 +987,23 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
       margin-bottom: 8px;
       line-height: 1.3;
   }
+  
+  /* ĐÉP CÁC NÚT VÀO MỘT HÀNG NGANG TƯƠNG TỰ BÊN KIA */
+  .movie-card-landscape.active-mobile .popup-actions {
+      flex-wrap: nowrap !important;
+      gap: 4px !important;
+      margin-top: 8px !important;
+  }
+  
   .movie-card-landscape.active-mobile .btn-play-pink {
-      font-size: 12px !important;
-      padding: 6px 12px !important;
+      font-size: 11px !important;
+      padding: 6px 10px !important;
+      white-space: nowrap !important;
   }
   .movie-card-landscape.active-mobile .btn-action-glass {
-      padding: 6px 10px !important;
+      padding: 6px 8px !important;
       font-size: 11px !important;
+      white-space: nowrap !important;
   }
   .movie-card-landscape.active-mobile .meta-badges-row {
       gap: 5px !important;
@@ -964,11 +1033,11 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
     /* MẶC ĐỊNH: CENTER */
     left: 50% !important;
     right: auto !important;
-    transform: translate(-50%, -50%) scale(1.15) !important;
+    transform: translate(-50%, -50%) scale(1) !important; /* Bỏ scale(1.15) để popup không bị lố */
     
     width: 100% !important; 
     height: auto !important;
-    min-height: 100% !important;
+    min-height: auto !important; /* Đổi thành auto thay vì 100% để giảm chiều cao */
     
     z-index: 10001 !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9) !important;
@@ -997,7 +1066,7 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   .movie-card-wrapper.popup-align-left .movie-popup-nfx {
       left: 0 !important;
       right: auto !important;
-      transform: translate(0, -50%) scale(1.15) !important; /* Neo bên trái, scale từ tâm trái */
+      transform: translate(0, -50%) scale(1) !important; /* Neo bên trái, scale từ tâm trái */
       transform-origin: left center !important;
   }
 
@@ -1005,7 +1074,7 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   .movie-card-wrapper.popup-align-right .movie-popup-nfx {
       left: auto !important;
       right: 0 !important;
-      transform: translate(0, -50%) scale(1.15) !important; /* Neo bên phải, scale từ tâm phải */
+      transform: translate(0, -50%) scale(1) !important; /* Neo bên phải, scale từ tâm phải */
       transform-origin: right center !important;
   }
   
@@ -1017,13 +1086,30 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
       pointer-events: auto !important;
   }
 
-  /* 👇 FIX: Hiển thị đầy đủ thông tin trong Popup Mobile */
+  /* 👇 FIX: Hiển thị đầy đủ thông tin trong Popup Mobile và thu gọn chiều cao */
+  .movie-popup-nfx .popup-header-img {
+      height: 100px !important; /* Giảm chiều cao ảnh bìa popup */
+  }
+  
+  .movie-popup-nfx .popup-body {
+      padding: 10px !important; /* Giảm khoảng cách lề trong popup */
+  }
+  
+  .movie-popup-nfx .popup-title-new {
+      font-size: 15px !important; /* Cỡ chữ nhỏ hơn chút */
+      margin-bottom: 6px !important;
+  }
+  
+  .movie-popup-nfx .popup-actions {
+      margin-bottom: 10px !important;
+  }
+  
   .movie-popup-nfx .popup-genres-row,
   .movie-popup-nfx .popup-meta-row span {
       display: inline-block !important;
       visibility: visible !important;
       opacity: 1 !important;
-      font-size: 11px; /* Chữ nhỏ cho vừa */
+      font-size: 11px !important; /* Chữ nhỏ cho vừa */
   }
   
   .movie-popup-nfx .popup-genres-row {
@@ -1571,6 +1657,12 @@ body[data-theme="light"] .chat-msg .author {
     min-height: 100vh !important;
     background: var(--bg-primary) !important;
   }
+  
+  /* Cụ thể cho trang Phòng Xem Chung (Header di động cao nên cần đẩy lùi xuống thêm) */
+  #watchPartyPage.page {
+    padding-top: 110px !important;
+  }
+  
   #partyRoom.page {
     padding-top: 0 !important;
   }
@@ -2060,5 +2152,88 @@ body[data-theme="light"] .chat-msg .author {
   #singleMoviesPage, 
   #seriesMoviesPage {
     padding-top: 110px !important; /* Menu 70px + 40px khoảng cách */
+  }
+}
+
+/* ============================================
+   RESPONSIVE: TRANG DIỄN VIÊN (ACTORS PAGE)
+   ============================================ */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .actors-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+    gap: 12px !important;
+  }
+  .actor-card-avatar {
+    width: 90px !important;
+    height: 90px !important;
+  }
+  .actor-detail-layout {
+    padding: 15px 25px 30px !important;
+  }
+  .actor-detail-body {
+    grid-template-columns: 220px 1fr !important;
+    gap: 25px !important;
+  }
+  .actor-info-avatar {
+    width: 150px !important;
+    height: 150px !important;
+  }
+  .actor-info-sidebar {
+    padding: 20px 15px !important;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .actors-grid {
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)) !important;
+    gap: 10px !important;
+  }
+  .actor-card {
+    padding: 10px 6px !important;
+  }
+  .actor-card-avatar {
+    width: 75px !important;
+    height: 75px !important;
+  }
+  .actor-card-name {
+    font-size: 11px !important;
+  }
+
+  /* Chi tiết diễn viên: Xếp dọc */
+  .actor-detail-layout {
+    padding: 10px 15px 30px !important;
+  }
+  .actor-detail-body {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .actor-info-sidebar {
+    position: static !important;
+    text-align: center;
+    padding: 20px 15px !important;
+  }
+  .actor-info-avatar {
+    width: 120px !important;
+    height: 120px !important;
+    margin: 0 auto 10px !important;
+  }
+  .actor-info-actions {
+    justify-content: center !important;
+  }
+  .actor-movies-grid,
+  .timeline-movies-row {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+    gap: 10px !important;
+  }
+  .actor-movies-header {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: flex-start !important;
+  }
+  .timeline-year {
+    font-size: 1.2rem !important;
   }
 }

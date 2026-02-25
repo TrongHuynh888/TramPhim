@@ -213,6 +213,10 @@ function showPage(pageName, addToHistory = true) {
   if (pageName === "countries" && typeof renderCountriesList === "function") {
     renderCountriesList();
   }
+  // 👉 THÊM ĐOẠN NÀY CHO DIỄN VIÊN:
+  if (pageName === "actors" && typeof renderActorsPage === "function") {
+    renderActorsPage();
+  }
   // Cuộn lên đầu
   window.scrollTo(0, 0);
 }

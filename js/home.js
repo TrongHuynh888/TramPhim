@@ -132,16 +132,28 @@ function createMovieCard(movie) {
                 <h3 class="popup-title-new">${movie.title} ${partHtml}</h3>
                 ${movie.originTitle ? `<p style="font-size: 0.85em; color: #555; margin: -5px 0 5px; font-style: italic; font-weight: 500;">${movie.originTitle}</p>` : ''}
                 <div class="popup-meta-row">
-                    <span class="meta-match">${matchScore}% Phù hợp</span>
-                    <span class="meta-age">${movie.ageLimit || "T13"}</span>
-                    <span>${movie.year || "2026"}</span> <!-- Thêm Năm -->
-                    <span>${movie.duration || "90p"}</span>
-                    <span class="meta-quality">${movie.quality || "HD"}</span>
+                    <!-- Khối thông tin gốc -->
+                    <div class="marquee-content">
+                        <span class="meta-match">${matchScore}% Phù hợp</span>
+                        <span class="meta-age">${movie.ageLimit || "T13"}</span>
+                        <span>${movie.year || "2026"}</span>
+                        <span>${movie.duration || "90p"}</span>
+                        <span class="meta-quality">${movie.quality || "HD"}</span>
+                    </div>
+                    <!-- Bản sao chỉ dành cho hiệu ứng cuộn Marquee trên điện thoại -->
+                    <div class="marquee-content marquee-duplicate mobile-only-marquee" aria-hidden="true">
+                        <span class="meta-match">${matchScore}% Phù hợp</span>
+                        <span class="meta-age">${movie.ageLimit || "T13"}</span>
+                        <span>${movie.year || "2026"}</span>
+                        <span>${movie.duration || "90p"}</span>
+                        <span class="meta-quality">${movie.quality || "HD"}</span>
+                    </div>
                 </div>
                 <div class="popup-genres-row">
-                    <span>${(movie.categories && movie.categories.length > 0) ? movie.categories.slice(0, 2).join(', ') + (movie.categories.length > 2 ? '...' : '') : (movie.category || "Phim mới")}</span>
+                    <span class="desktop-genres">${(movie.categories && movie.categories.length > 0) ? movie.categories.slice(0, 2).join(', ') + (movie.categories.length > 2 ? '...' : '') : (movie.category || "Phim mới")}</span>
+                    <span class="mobile-genres" style="display: none;">${(movie.categories && movie.categories.length > 0) ? movie.categories[0] + (movie.categories.length > 1 ? '...' : '') : (movie.category || "Phim mới")}</span>
                     <span class="dot">•</span>
-                    <span>${movie.country || "Quốc tế"}</span>
+                    <span class="popup-country">${movie.country || "Quốc tế"}</span>
                 </div>
             </div>
         </div>
@@ -560,6 +572,71 @@ function renderCountrySections() {
         `;
     })
     .join("");
+
+  // Bật vuốt kéo thả cho PC sau khi DOM đã được chèn vào
+  initDragToScroll();
+}
+
+/**
+ * Tính năng kéo để cuộn dành cho Máy tính (Desktop Drag to Scroll)
+ */
+function initDragToScroll() {
+  const sliders = document.querySelectorAll(".country-movies-row");
+  
+  sliders.forEach(slider => {
+    let isDown = false;
+    let isDragging = false;
+    let startX;
+    let scrollLeft;
+
+    slider.addEventListener("mousedown", (e) => {
+      isDown = true;
+      isDragging = false; // Reset trạng thái kéo
+      
+      // Lấy vị trí click ban đầu (bỏ qua offset ngoài lề)
+      startX = e.pageX - slider.offsetLeft;
+      // Lưu lại vị trí cuộn hiện hành
+      scrollLeft = slider.scrollLeft;
+    });
+
+    slider.addEventListener("mouseleave", () => {
+      isDown = false;
+      slider.classList.remove("active-drag");
+    });
+
+    slider.addEventListener("mouseup", () => {
+      isDown = false;
+      slider.classList.remove("active-drag");
+    });
+
+    slider.addEventListener("mousemove", (e) => {
+      if (!isDown) return; // Chỉ chạy khi đang nhấn giữ chuột
+      e.preventDefault(); // Ngăn chọn văn bản hoặc hình ảnh mặc định của trình duyệt
+      
+      const x = e.pageX - slider.offsetLeft;
+      // Tính quãng đường kéo
+      const walk = (x - startX) * 2; 
+
+      // 🔥 THRESHOLD: Chỉ kích hoạt Drag (và khóa click) khi chuột di chuyển > 5px
+      if (Math.abs(walk) > 5) {
+          isDragging = true;
+          slider.classList.add("active-drag"); // Khóa pointer-events của thẻ phim
+      }
+
+      // Cuộn thẻ div tương ứng với quãng đường kéo
+      if (isDragging) {
+          slider.scrollLeft = scrollLeft - walk;
+      }
+    });
+
+    // Bắt sự kiện click để chặn nếu vừa thực hiện kéo chuột
+    slider.addEventListener("click", (e) => {
+      if (isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true); // Use capture phase
+  });
 }
 
 /**
