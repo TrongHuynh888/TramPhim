@@ -682,6 +682,73 @@
   object-fit: cover;
   transition: transform 0.3s;
 }
+
+/* Badge trạng thái tập phim (góc trái trên) */
+.episode-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  background: rgba(52, 152, 219, 0.88);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.episode-badge-full {
+  background: rgba(46, 204, 113, 0.9);
+}
+
+/* Container cho nhãn khớp kết quả lọc */
+.match-badges-container {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  z-index: 10;
+  pointer-events: none; /* Không cản trở click vào thẻ phim */
+}
+
+/* Nhãn khớp cụ thể */
+.match-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: capitalize;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  animation: badgeSlideIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes badgeSlideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Màu sắc theo loại tiêu chí */
+.match-badge-category { background: rgba(52, 152, 219, 0.7); } /* Xanh dương */
+.match-badge-country { background: rgba(241, 196, 15, 0.7); }  /* Vàng */
+.match-badge-year { background: rgba(155, 89, 182, 0.7); }     /* Tím */
+
+.match-badge i {
+  font-size: 9px;
+}
 .movie-card-static .card-body {
   padding: 10px;
   flex: 1;
@@ -2113,5 +2180,364 @@
 
 [data-theme="light"] .actor-detail-topbar {
   border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   NÂNG CẤP BỘ LỌC PHIM (V3 - MINIMALIST PRO)
+   ============================================ */
+.search-filter {
+  display: flex !important;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* SEARCH BOX */
+.search-box {
+    position: relative;
+    background: rgba(20, 20, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px !important; /* Dáng vuông bo nhẹ sang trọng */
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 44px;
+    min-width: 240px;
+    max-width: 280px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.search-box:hover {
+    background: rgba(30, 30, 45, 0.8);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.search-box:focus-within {
+    background: #151520;
+    border-color: rgba(255, 255, 255, 0.5); /* Viền xám trắng tinh tế, không chói */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    max-width: 340px; /* Dãn nhẹ ra khi nhập */
+    outline: none !important;
+}
+
+.search-box i {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: color 0.3s;
+    margin-right: 12px;
+}
+
+.search-box:focus-within i {
+    color: #fff;
+}
+
+.search-box input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #fff !important;
+    padding-left: 0;
+    width: 100%;
+    font-size: 0.95rem;
+}
+
+.search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.search-box:focus-within input::placeholder {
+    opacity: 0.3;
+}
+
+/* FILTER BOXES */
+.custom-filter-group {
+    display: flex !important;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+.custom-filter-box {
+    position: relative;
+    background: rgba(20, 20, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px !important;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 44px;
+    width: 160px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.custom-filter-box:hover,
+.custom-filter-box.active {
+    background: rgba(30, 30, 45, 0.9);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+.custom-filter-box i {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-right: 10px;
+    transition: color 0.3s;
+}
+
+.custom-filter-box:hover i,
+.custom-filter-box.active i {
+    color: #fff;
+}
+
+.custom-filter-box input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #fff !important;
+    font-size: 0.9rem;
+    width: 100%;
+    cursor: pointer;
+    text-overflow: ellipsis;
+}
+
+.custom-filter-box input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ============================================
+   MEGA MENU DROPDOWN (BẢNG LỌC LỚN)
+   ============================================ */
+.suggestions-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0; 
+    width: 420px; /* Mở rộng thành bảng lớn */
+    background: rgba(20, 20, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    max-height: 350px;
+    overflow-y: auto;
+    z-index: 9999;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.05);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    
+    /* Thiết lập Grid cho nội dung bên trong */
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Chia 2 cột */
+    gap: 8px;
+    padding: 16px;
+}
+
+/* Đảm bảo item "Tất cả" chiếm trọn 2 cột nếu muốn, ở đây cứ để 1 cột cho đều */
+.custom-filter-box.active .suggestions-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.suggestion-item {
+    position: relative;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: #bbb;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.suggestion-item.item-all {
+    background: rgba(255, 255, 255, 0.08);
+    font-weight: bold;
+    color: #fff;
+    grid-column: span 2; /* Cho mục Tất cả chiếm hết 2 cột */
+}
+
+.suggestion-item.selected {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: var(--accent-secondary);
+    color: #fff;
+    font-weight: 600;
+    justify-content: space-between; /* Đưa nhãn sang trái, X sang phải */
+    padding-right: 12px;
+}
+
+/* Xóa check cũ */
+.suggestion-item.selected::after {
+    display: none;
+}
+
+.item-label {
+    flex: 1;
+    text-align: center;
+}
+
+.btn-remove-item {
+    font-size: 11px;
+    opacity: 0.7;
+    transition: all 0.2s;
+    margin-left: 8px;
+    color: var(--accent-secondary);
+}
+
+.suggestion-item.selected:hover .btn-remove-item {
+    opacity: 1;
+    color: #ff4d4d; /* Chuyển đỏ khi hover vào nút xóa */
+}
+
+.suggestion-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* NÚT LỌC PHIM */
+.btn-filter-apply {
+    background: var(--accent-secondary);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    height: 44px;
+    padding: 0 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+    margin-left: 5px;
+}
+
+.btn-filter-apply:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+    filter: brightness(1.1);
+}
+
+.filter-result-summary {
+    margin: 10px 0 20px 0;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--accent-secondary);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    display: none;
+    animation: filterFadeIn 0.3s ease;
+    width: 100%;
+    line-height: 1.6;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.filter-result-summary.active {
+    display: block;
+}
+
+.filter-summary-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 15px;
+}
+
+.filter-summary-item b {
+    color: var(--accent-secondary);
+    font-weight: 500;
+}
+
+.filter-count-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-left: 5px;
+    font-weight: 600;
+}
+
+.filter-count-badge.zero {
+    background: rgba(255, 77, 77, 0.15);
+    color: #ff4d4d;
+}
+
+@keyframes filterFadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.btn-filter-apply i {
+    font-size: 0.85rem;
+}
+
+/* Tùy chỉnh thanh cuộn cho Mega Menu */
+.suggestions-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+.suggestions-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+.suggestions-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+.suggestions-dropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 1200px) {
+    .section-header {
+        flex-wrap: wrap;
+        flex-direction: row;
+        align-items: center;
+        gap: 15px;
+    }
+    .search-filter {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .custom-filter-group {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+    }
+    .custom-filter-box {
+        width: 100% !important;
+        height: 46px;
+    }
+    .custom-filter-box:last-child {
+        grid-column: span 2;
+    }
+    .search-box {
+        width: 100%;
+        max-width: none;
+    }
+    .suggestions-dropdown {
+        width: 100%;
+        left: 0;
+    }
 }
 

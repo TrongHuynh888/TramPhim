@@ -177,12 +177,17 @@
       <div class="admin-panel" id="moviesPanel">
         <div class="admin-panel-header">
           <h2 class="admin-panel-title">Quản lý Phim</h2>
-          <button class="btn btn-primary" onclick="openMovieModal()">
-            <i class="fas fa-plus"></i> Thêm phim mới
-          </button>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="syncAllMoviesActors()" title="Đồng bộ ID diễn viên cho toàn bộ phim">
+              <i class="fas fa-sync-alt"></i> Đồng bộ Diễn viên
+            </button>
+            <button class="btn btn-primary" onclick="openMovieModal()">
+              <i class="fas fa-plus"></i> Thêm phim mới
+            </button>
+          </div>
         </div>
 
-        <div class="search-filter mb-3">
+        <div class="movie-filter-grid">
           <div class="search-box">
             <i class="fas fa-search"></i>
             <input
@@ -193,6 +198,23 @@
               oninput="filterAdminMovies()"
             />
           </div>
+          <select class="form-select" id="adminSortMovies" onchange="filterAdminMovies()">
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+          </select>
+          <select class="form-select" id="adminFilterMovieType" onchange="filterAdminMovies()">
+            <option value="">Tất cả loại</option>
+            <option value="single">Phim lẻ</option>
+            <option value="series">Phim bộ</option>
+          </select>
+          <select class="form-select" id="adminFilterMovieCategory" onchange="filterAdminMovies()">
+            <option value="">Tất cả thể loại</option>
+            <!-- Sẽ được load động các thể loại có phim -->
+          </select>
+          <select class="form-select" id="adminFilterCountry" onchange="filterAdminMovies()">
+            <option value="">Tất cả quốc gia</option>
+            <!-- Sẽ được load động theo số lượng phim -->
+          </select>
           <select class="form-select" id="adminFilterStatus" onchange="filterAdminMovies()">
             <option value="">Tất cả trạng thái</option>
             <option value="public">Công khai</option>
@@ -201,12 +223,22 @@
           </select>
         </div>
 
+        <!-- Thống kê phim -->
+        <div class="admin-movie-stats mb-3" style="display: flex; gap: 20px; font-size: 0.9rem; color: var(--text-muted);">
+            <div id="statMoviesTotal">Tổng: 0</div>
+            <div id="statMoviesSingle" style="color: #4dabf7;">Phim lẻ: 0</div>
+            <div id="statMoviesSeries" style="color: #da77f2;">Phim bộ: 0</div>
+        </div>
+
         <table class="admin-table">
           <thead>
             <tr>
               <th>Poster</th>
               <th>Tên phim</th>
+              <th>Quốc gia</th>
+              <th>Phân loại</th>
               <th>Thể loại</th>
+              <th>Tình trạng</th>
               <th>Giá (CRO)</th>
               <th>Lượt xem</th>
               <th>Trạng thái</th>
@@ -242,6 +274,23 @@
               style="padding-left: 35px"
             />
           </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <select class="form-select" id="episodeMovieSort" onchange="filterEpisodeMovies()" style="flex: 1;">
+              <option value="newest">Mới nhất</option>
+              <option value="oldest">Cũ nhất</option>
+            </select>
+            <select class="form-select" id="episodeMovieAlphabet" onchange="filterEpisodeMovies()" style="flex: 1;">
+              <option value="">Chữ cái (Tất cả)</option>
+              <option value="A-D">Vần A - D</option>
+              <option value="E-H">Vần E - H</option>
+              <option value="I-L">Vần I - L</option>
+              <option value="M-P">Vần M - P</option>
+              <option value="Q-T">Vần Q - T</option>
+              <option value="U-Z">Vần U - Z</option>
+              <option value="others">Khác (Số...)</option>
+            </select>
+          </div>
           <select
             class="form-select"
             id="selectMovieForEpisodes"
@@ -252,6 +301,20 @@
         </div>
 
         <div id="episodesManagement" class="hidden">
+          <!-- Thanh Tổng số tập -->
+          <div style="display: flex; align-items: center; gap: 12px; background: rgba(78, 205, 196, 0.08); border: 1px solid rgba(78, 205, 196, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-layer-group" style="color: #4ecdc4;"></i>
+              <label style="font-weight: 600; white-space: nowrap;">Tổng số tập:</label>
+            </div>
+            <input type="number" class="form-input" id="totalEpisodesInput" min="0" placeholder="VD: 16" 
+              style="width: 90px; text-align: center; padding: 6px 10px;">
+            <button class="btn btn-sm" style="background: #4ecdc4; color: #fff; border: none; padding: 6px 14px; border-radius: 6px;" onclick="saveTotalEpisodes()">
+              <i class="fas fa-save"></i> Lưu
+            </button>
+            <span id="episodeStatusBadge" style="margin-left: auto; font-size: 0.85rem; font-weight: 600; padding: 4px 12px; border-radius: 6px; background: rgba(255,255,255,0.08);"></span>
+          </div>
+
           <div class="flex-between mb-3">
             <h3>Danh sách tập</h3>
             <div style="display: flex; gap: 8px;">
@@ -377,7 +440,7 @@
         <!-- Khung Import Diễn Viên từ OPhim API -->
         <div id="actorApiImportBox" style="display: none; background: rgba(81, 207, 102, 0.08); border: 1px dashed #51cf66; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
             <label class="form-label" style="color: #51cf66; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-users"></i> Import diễn viên từ OPhim (TMDB)
+                <i class="fas fa-users"></i> Import diễn viên & đạo diễn từ OPhim (TMDB)
             </label>
             <div style="display: flex; gap: 10px;">
                 <input type="text" class="form-input" id="actorApiSlugInput" placeholder="Nhập slug phim (VD: tieng-yeu-nay-anh-dich-duoc-khong)" style="flex: 1;">
@@ -386,13 +449,39 @@
                 </button>
             </div>
             <small class="text-muted" style="display: block; margin-top: 8px; font-size: 0.8rem;">
-                * Nhập slug phim từ OPhim. Hệ thống sẽ quét danh sách diễn viên, so sánh với kho hiện tại, và tự động thêm những người chưa có.
+                * Nhập slug phim từ OPhim. Hệ thống sẽ quét danh sách diễn viên và đạo diễn, so sánh với kho hiện tại, và tự động thêm những người chưa có.
             </small>
             <div id="actorApiImportResults" style="margin-top: 12px;"></div>
         </div>
 
+        <!-- Khung Import Diễn Viên từ RapChieuPhim API -->
+        <div id="rapActorApiImportBox" style="display: none; background: rgba(255, 107, 107, 0.08); border: 1px dashed #ff6b6b; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+            <label class="form-label" style="color: #ff6b6b; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-film"></i> Import diễn viên từ RapChieuPhim.com
+            </label>
+            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                <input type="text" class="form-input" id="rapApiKeyInput" placeholder="Nhập API Key (x-api-key)" style="flex: 1;">
+                <button type="button" class="btn btn-secondary" onclick="copyRapApiKey()" title="Sao chép Key" style="padding: 10px 15px;">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveRapApiKey()" title="Lưu Key" style="padding: 10px 15px;">
+                    <i class="fas fa-save"></i> Lưu Key
+                </button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" class="form-input" id="rapApiPageInput" placeholder="Trang (mặc định: 1)" style="width: 120px;" value="1" min="1">
+                <button type="button" class="btn" style="background: #ff6b6b; color: #fff; white-space: nowrap;" onclick="fetchActorsFromRapChieuPhim()">
+                    <i class="fas fa-download"></i> Import diễn viên
+                </button>
+            </div>
+            <small class="text-muted" style="display: block; margin-top: 8px; font-size: 0.8rem;">
+                * Nhập API Key từ rapchieuphim.com/api/key. Hệ thống sẽ lấy danh sách diễn viên và tự động thêm mới vào kho.
+            </small>
+            <div id="rapActorApiImportResults" style="margin-top: 12px;"></div>
+        </div>
+
         <div class="search-filter mb-3">
-          <div class="search-box">
+          <div class="search-box" style="flex: 1;">
             <i class="fas fa-search"></i>
             <input
               type="text"
@@ -402,17 +491,47 @@
               oninput="renderAdminActors()"
             />
           </div>
+          <select class="form-select" id="adminSortActor" onchange="renderAdminActors()" style="width: 200px;">
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="az">Tên A-Z</option>
+            <option value="za">Tên Z-A</option>
+          </select>
+        </div>
+
+        <!-- Thanh Hành động hàng loạt (Bulk Actions) -->
+        <div id="actorBulkActionsBar" class="bulk-actions-bar">
+          <div class="bulk-info">
+            <span class="selected-count">Đã chọn: <strong id="selectedActorsCount">0</strong></span>
+            <button class="btn btn-sm btn-secondary" onclick="clearActorSelection()">Bỏ chọn</button>
+          </div>
+          <div class="bulk-buttons">
+            <button class="btn btn-sm btn-primary" onclick="openBulkUpdateModal('gender')">
+              <i class="fas fa-venus-mars"></i> Đổi Giới tính
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="openBulkUpdateModal('country')">
+              <i class="fas fa-globe"></i> Đổi Nơi sống
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSelectedActors()">
+              <i class="fas fa-trash-alt"></i> Xóa đã chọn
+            </button>
+          </div>
         </div>
 
         <div class="table-responsive">
           <table class="admin-table">
             <thead>
               <tr>
+                <th style="width: 40px">
+                  <input type="checkbox" id="selectAllActors" onclick="toggleSelectAllActors(this.checked)" />
+                </th>
                 <th style="width: 50px">STT</th>
                 <th>Hình Ảnh</th>
-                <th>Tên Diễn Viên</th>
+                <th>Tên</th>
+                <th>Vai trò</th>
                 <th>Giới tính</th>
                 <th>Ngày sinh</th>
+                <th>Nơi sống</th>
                 <th style="width: 120px">Thao tác</th>
               </tr>
             </thead>
@@ -830,6 +949,7 @@
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
   </div>
@@ -866,16 +986,18 @@
           <img id="actorAvatarPreview" src="https://ui-avatars.com/api/?name=Actor&background=random&color=fff&size=120" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.1); margin-bottom: 15px;" alt="Avatar Preview">
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Tên Diễn Viên <span style="color:red">*</span></label>
+        <div class="form-group" style="position: relative;">
+          <label class="form-label">Tên <span style="color:red">*</span></label>
           <input
             type="text"
             class="form-input"
             id="actorName"
             required
-            placeholder="Nhập tên diễn viên (VD: Tom Cruise)"
-            oninput="updateActorPreview();"
+            placeholder="Nhập tên (VD: Tom Cruise, Christopher Nolan)"
+            oninput="updateActorPreview(); checkActorDuplicate(this.value);"
+            autocomplete="off"
           />
+          <div id="actorDuplicateSuggestions" class="suggestions-list"></div>
         </div>
         
         <div class="form-group">
@@ -910,6 +1032,13 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
           <div class="form-group">
+            <label class="form-label">Vai trò</label>
+            <select class="form-select" id="actorRole">
+              <option value="actor">Diễn viên</option>
+              <option value="director">Đạo diễn</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Giới tính</label>
             <select class="form-select" id="actorGender">
               <option value="">Không rõ</option>
@@ -917,9 +1046,26 @@
               <option value="Nữ">Nữ</option>
             </select>
           </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
           <div class="form-group">
             <label class="form-label">Ngày sinh</label>
             <input type="date" class="form-input" id="actorDob" />
+          </div>
+          <div class="form-group" style="position: relative;">
+            <label class="form-label">Quốc gia / Nơi sống</label>
+            <input 
+              type="text" 
+              class="form-input" 
+              id="actorCountry" 
+              placeholder="VD: Hàn Quốc, Mỹ, Việt Nam..." 
+              autocomplete="off"
+              oninput="handleCountryInput(this.value)"
+              onfocus="handleCountryInput(this.value)"
+              onkeydown="handleCountryKeydown(event)"
+            />
+            <div id="actorCountrySuggestions" class="suggestions-list"></div>
           </div>
         </div>
 
@@ -940,6 +1086,107 @@
           <button type="submit" class="btn btn-primary">Lưu</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cập nhật hàng loạt Diễn viên -->
+<div class="modal-overlay" id="bulkUpdateActorModal">
+  <div class="modal" style="max-width: 450px;">
+    <div class="modal-header">
+      <h3 id="bulkUpdateModalTitle">Cập nhật hàng loạt</h3>
+      <button class="modal-close" onclick="closeModal('bulkUpdateActorModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="bulkUpdateActorForm" onsubmit="handleBulkUpdateSubmit(event)">
+        <input type="hidden" id="bulkUpdateField" />
+        
+        <div id="bulkGenderField" class="form-group hidden">
+          <label class="form-label">Chọn giới tính mới:</label>
+          <select class="form-select" id="bulkActorGender">
+            <option value="">Không rõ</option>
+            <option value="Nam">Nam</option>
+            <option value="Nữ">Nữ</option>
+          </select>
+        </div>
+
+        <div id="bulkCountryField" class="form-group hidden" style="position: relative;">
+          <label class="form-label">Nhập nơi sống mới:</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            id="bulkActorCountry" 
+            placeholder="VD: Hàn Quốc, Mỹ..." 
+            autocomplete="off"
+            oninput="handleBulkCountryInput(this.value)"
+            onfocus="handleBulkCountryInput(this.value)"
+          />
+          <div id="bulkActorCountrySuggestions" class="suggestions-list"></div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('bulkUpdateActorModal')">
+            Hủy
+          </button>
+          <button type="submit" class="btn btn-primary">Cập nhật (<span id="bulkUpdateCount">0</span>)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Modal So sánh & Cập nhật Diễn viên từ API -->
+<div class="modal-overlay" id="actorImportCompareModal">
+  <div class="modal" style="max-width: 850px; width: 95%;">
+    <div class="modal-header">
+      <h3>So sánh & Bổ sung dữ liệu Diễn viên</h3>
+      <button class="modal-close" onclick="closeModal('actorImportCompareModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 0;">
+      <div id="compareSummary" style="padding: 15px 20px; background: rgba(77, 171, 247, 0.1); border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
+        Phát hiện <strong id="compareCount">0</strong> diễn viên có thông tin đầy đủ hơn từ API. Admin hãy kiểm tra và duyệt cập nhật.
+      </div>
+      
+      <div class="compare-container" style="max-height: 60vh; overflow-y: auto;">
+        <table class="admin-table compare-table">
+          <thead>
+            <tr>
+              <th style="width: 150px;">Trường dữ liệu</th>
+              <th>Hiện tại (Database)</th>
+              <th>Mới (Từ API)</th>
+            </tr>
+          </thead>
+          <tbody id="actorCompareList">
+            <!-- Dữ liệu so sánh render tại đây -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="compare-navigation" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-top: 1px solid var(--border-color);">
+        <div class="compare-info">
+            Đang xem: <strong id="compareCurrentIndex">1</strong> / <span id="compareTotal">0</span>
+        </div>
+        <div class="compare-actions" style="display: flex; gap: 10px;">
+          <button type="button" class="btn btn-secondary" id="btnPrevCompare" onclick="navigateCompare(-1)">
+            <i class="fas fa-chevron-left"></i> Trước
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnNextCompare" onclick="navigateCompare(1)">
+            Tiếp <i class="fas fa-chevron-right"></i>
+          </button>
+          <button type="button" class="btn btn-primary" onclick="applyCurrentActorUpdate()" style="background: #51cf66;">
+            <i class="fas fa-check"></i> Duyệt cập nhật này
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('actorImportCompareModal')">Đóng</button>
+        <button type="button" class="btn btn-primary" onclick="applyAllActorUpdates()" style="background: var(--accent-primary);">
+            <i class="fas fa-file-import"></i> Duyệt cập nhật tất cả (<span id="compareTotalAll">0</span>)
+        </button>
     </div>
   </div>
 </div>

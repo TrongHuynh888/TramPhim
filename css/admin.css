@@ -223,6 +223,98 @@
   gap: var(--spacing-md);
   flex-wrap: wrap;
 }
+
+/* Movie Filter Grid Optimization */
+.movie-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr repeat(5, 1fr);
+  gap: 12px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 15px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.movie-filter-grid .search-box {
+  width: 100%;
+}
+
+.movie-filter-grid .search-box input {
+  min-width: unset;
+  width: 100%;
+}
+
+.movie-filter-grid .form-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  background-color: var(--bg-secondary);
+}
+
+/* Country Badge Decoration */
+.country-badge-v2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.2s;
+}
+
+.country-badge-v2:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.country-badge-v2 .flag-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* Flag Waving Animation */
+@keyframes flag-wave {
+    0% { transform: rotate(0deg) skewY(0deg); }
+    25% { transform: rotate(2deg) skewY(1deg); }
+    50% { transform: rotate(0deg) skewY(0deg); }
+    75% { transform: rotate(-2deg) skewY(-1deg); }
+    100% { transform: rotate(0deg) skewY(0deg); }
+}
+
+/* Sửa lỗi lá cờ bị ghi đè bởi quy tắc chung của bảng */
+.admin-table td .flag-icon-img {
+    width: 18px !important;
+    height: 10px !important; /* Tỉ lệ ~16:9 */
+    object-fit: cover !important;
+    border-radius: 2px !important; /* Phá bỏ hình tròn nếu bị ghi đè */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    animation: flag-wave 3s infinite ease-in-out;
+    transform-origin: left center;
+    vertical-align: middle;
+    margin-right: 4px;
+    display: inline-block;
+}
+
+@media (max-width: 1200px) {
+  .movie-filter-grid {
+    grid-template-columns: 1.5fr repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .movie-filter-grid {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px;
+  }
+  .movie-filter-grid .search-box {
+    grid-column: span 2;
+  }
+}
 .search-box {
   position: relative;
 }
@@ -586,7 +678,200 @@
   color: var(--text-muted);
 }
 
-@keyframes slideIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+
+/* --- SMART COUNTRY SUGGESTIONS --- */
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 var(--border-radius-sm) var(--border-radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding-left: 20px;
+}
+
+.suggestion-item.warning-item {
+  background: rgba(255, 68, 68, 0.1);
+  border-left: 3px solid #ff4444;
+}
+
+.suggestion-item.warning-item:hover {
+  background: rgba(255, 68, 68, 0.2);
+}
+
+.suggestion-item i {
+  color: var(--accent-primary, #e50914);
+  font-size: 0.9rem;
+  margin-right: 10px;
+}
+
+/* Tùy chỉnh thanh cuộn cho danh sách gợi ý */
+.suggestions-list::-webkit-scrollbar {
+  width: 5px;
+}
+.suggestions-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.suggestions-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+.suggestions-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+/* --- BULK ACTIONS BAR --- */
+.bulk-actions-bar {
+  display: none; /* Hiện khi có item được chọn */
+  position: sticky;
+  top: 70px;
+  background: rgba(229, 9, 20, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(229, 9, 20, 0.3);
+  padding: 12px 20px;
+  border-radius: var(--border-radius);
+  margin-bottom: 20px;
+  z-index: 99;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideDownFade 0.3s ease;
+}
+
+.bulk-actions-bar.active {
+  display: flex;
+}
+
+.bulk-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.selected-count {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.bulk-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .bulk-actions-bar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    top: 60px;
+  }
+}
+
+/* --- COMPARE TABLE (API IMPORT) --- */
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.compare-table th {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  padding: 12px 20px;
+}
+
+.compare-table td {
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+
+.compare-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.compare-old {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.compare-new {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.compare-highlight {
+  background: rgba(81, 207, 102, 0.1);
+  color: #51cf66 !important;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(81, 207, 102, 0.2);
+}
+
+.compare-empty {
+  font-style: italic;
+  opacity: 0.4;
+}
+
+.compare-avatar-img {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+}
+
+/* --- ACTOR BADGES --- */
+.badge-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ff4444;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-left: 8px;
+  animation: pulse-new 2s infinite;
+  vertical-align: middle;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+}
+
+@keyframes pulse-new {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }

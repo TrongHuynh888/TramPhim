@@ -70,7 +70,7 @@ function renderAllMovies(movies = null) {
 /* ============================================================
    1. HÀM TẠO THẺ PHIM (Cập nhật để hỗ trợ Mobile chuẩn)
    ============================================================ */
-function createMovieCard(movie) {
+function createMovieCard(movie, matchedTags = []) {
   // Logic xử lý dữ liệu (giữ nguyên)
   const partHtml = movie.part
     ? `<span style="background: var(--accent-primary); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; text-transform: uppercase; vertical-align: middle;">${movie.part}</span>`
@@ -90,12 +90,43 @@ function createMovieCard(movie) {
     "https://placehold.co/300x450/2a2a3a/FFFFFF?text=NO+POSTER";
   const matchScore = movie.rating ? Math.round(movie.rating * 10) : 95;
 
+  // Tính badge trạng thái tập (chỉ cho phim bộ)
+  let episodeBadgeHtml = "";
+  if (movie.type === "series") {
+    const currentEps = (movie.episodes || []).length;
+    const totalEps = movie.totalEpisodes || 0;
+    if (totalEps > 0 && currentEps >= totalEps) {
+      episodeBadgeHtml = `<span class="episode-badge episode-badge-full">Hoàn Tất (${currentEps}/${totalEps})</span>`;
+    } else if (totalEps > 0) {
+      episodeBadgeHtml = `<span class="episode-badge">Tập ${currentEps}/${totalEps}</span>`;
+    } else if (currentEps > 0) {
+      episodeBadgeHtml = `<span class="episode-badge">Tập ${currentEps}</span>`;
+    }
+  }
+
+  // Logic hiển thị nhãn khớp (Match Badges) - CHI HIÊN KHI LỌC
+  let matchBadgesHtml = "";
+  if (matchedTags && matchedTags.length > 0) {
+    matchBadgesHtml = `
+      <div class="match-badges-container">
+        ${matchedTags.map(tag => `
+          <div class="match-badge match-badge-${tag.type}">
+            <i class="fas fa-${tag.icon}"></i>
+            <span>${tag.label}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
   return `
     <div class="movie-card-wrapper" id="movie-wrapper-${movie.id}" onclick="handleMovieClick(event, '${movie.id}')">
         
         <div class="card movie-card movie-card-static">
             <div class="card-image">
                 <img src="${movie.posterUrl}" alt="${movie.title}" loading="lazy" onerror="this.src='${fallbackImage}';">
+                ${episodeBadgeHtml}
+                ${matchBadgesHtml}
                 <!-- Watch Progress Bar -->
                 <div class="watch-progress-container" id="progress-${movie.id}">
                     <div class="watch-progress-bar" style="width: 0%"></div>
@@ -259,20 +290,119 @@ function filterMovies(searchQuery = null) {
     searchQuery !== null
       ? searchQuery
       : document.getElementById("searchMovies")?.value.toLowerCase() || "";
-  const category = document.getElementById("filterCategory")?.value || "";
-  const country = document.getElementById("filterCountry")?.value || "";
-  const year = document.getElementById("filterYear")?.value || "";
+      
+  const categoryStr = document.getElementById("inputFilterCategory")?.value.trim() || "";
+  const countryStr = document.getElementById("inputFilterCountry")?.value.trim() || "";
+  const yearStr = document.getElementById("inputFilterYear")?.value.trim() || "";
 
-  let filtered = allMovies.filter((movie) => {
+  // Chuyển chuỗi thành mảng linh hoạt (hỗ trợ cả dấu phẩy thừa)
+  const categories = categoryStr.split(',').map(s => s.trim()).filter(Boolean);
+  const countries = countryStr.split(',').map(s => s.trim()).filter(Boolean);
+  const years = yearStr.split(',').map(s => s.trim()).filter(Boolean);
+
+  let filteredData = allMovies.map((movie) => {
+    // 1. Ô tìm kiếm (Luôn là AND - để thu hẹp kết quả)
     const matchQuery = !query || movie.title.toLowerCase().includes(query);
-    const matchCategory = !category || movie.category === category;
-    const matchCountry = !country || movie.country === country;
-    const matchYear = !year || movie.year == year;
+    if (!matchQuery) return null;
 
-    return matchQuery && matchCategory && matchCountry && matchYear;
-  });
+    // Nếu không có bất kỳ bộ lọc nhãn nào (Categories, Countries, Years) thì chỉ lọc theo Search Query
+    if (categories.length === 0 && countries.length === 0 && years.length === 0) {
+      return { movie, matchedTags: [] };
+    }
 
-  renderAllMovies(filtered);
+    // 2. Logic Union (OR) cho các bộ lọc nhãn
+    let matchedTags = [];
+    
+    // Kiểm tra Thể loại
+    let movieCats = (movie.categories || (movie.category ? [movie.category] : [])).map(c => c.toLowerCase());
+    const matchedCategories = categories.filter(c => movieCats.includes(c.toLowerCase()));
+    matchedCategories.forEach(cat => matchedTags.push({ type: 'category', icon: 'tag', label: cat }));
+    
+    // Kiểm tra Quốc gia
+    const matchedCountries = countries.filter(c => movie.country && c.toLowerCase() === movie.country.toLowerCase());
+    matchedCountries.forEach(cty => matchedTags.push({ type: 'country', icon: 'globe', label: cty }));
+    
+    // Kiểm tra Năm
+    const matchedYears = years.filter(y => movie.year && y.toString() === movie.year.toString());
+    matchedYears.forEach(y => matchedTags.push({ type: 'year', icon: 'calendar-alt', label: y }));
+
+    // Kết hợp: Khớp bất kỳ tiêu chí nào trong bộ nhãn
+    if (matchedTags.length > 0) {
+      return { movie, matchedTags };
+    }
+    return null;
+  }).filter(Boolean);
+
+  // Render kết quả
+  const container = document.getElementById("allMoviesGrid");
+  if (container) {
+    if (filteredData.length === 0) {
+      container.innerHTML = '<div class="text-center w-100">Không tìm thấy phim phù hợp.</div>';
+    } else {
+      container.innerHTML = filteredData.map(item => createMovieCard(item.movie, item.matchedTags)).join("");
+    }
+  }
+  
+  // Hiển thị tóm tắt kết quả (Categories, Countries, Years)
+  updateFilterSummary(categories, countries, years, allMovies, "filterResultSummary");
+}
+
+/**
+ * Hiển thị tóm tắt kết quả lọc có số lượng kèm theo
+ */
+function updateFilterSummary(categories, countries, years, sourceData, summaryElementId) {
+    const summaryEl = document.getElementById(summaryElementId);
+    if (!summaryEl) return;
+
+    if (categories.length === 0 && countries.length === 0 && years.length === 0) {
+        summaryEl.innerHTML = "";
+        summaryEl.classList.remove('active');
+        return;
+    }
+
+    let summaryHtml = '<span style="margin-right: 10px;"><i class="fas fa-info-circle"></i> Kết quả lọc:</span>';
+    
+    // Đếm Thể loại
+    if (categories.length > 0) {
+        categories.forEach(cat => {
+            const count = sourceData.filter(m => {
+                let mCats = (m.categories || (m.category ? [m.category] : [])).map(c => c.toLowerCase());
+                return mCats.includes(cat.toLowerCase());
+            }).length;
+            summaryHtml += `
+                <span class="filter-summary-item">
+                    <b>${cat}</b><span class="filter-count-badge ${count === 0 ? 'zero' : ''}">${count}</span>
+                </span>
+            `;
+        });
+    }
+
+    // Đếm Quốc gia
+    if (countries.length > 0) {
+        countries.forEach(cty => {
+            const count = sourceData.filter(m => m.country && m.country.toLowerCase() === cty.toLowerCase()).length;
+            summaryHtml += `
+                <span class="filter-summary-item">
+                    <b>${cty}</b><span class="filter-count-badge ${count === 0 ? 'zero' : ''}">${count}</span>
+                </span>
+            `;
+        });
+    }
+
+    // Đếm Năm
+    if (years.length > 0) {
+        years.forEach(y => {
+            const count = sourceData.filter(m => m.year && m.year.toString() === y.toString()).length;
+            summaryHtml += `
+                <span class="filter-summary-item">
+                    <b>${y}</b><span class="filter-count-badge ${count === 0 ? 'zero' : ''}">${count}</span>
+                </span>
+            `;
+        });
+    }
+
+    summaryEl.innerHTML = summaryHtml;
+    summaryEl.classList.add('active');
 }
 /**
  * Lọc phim theo Loại (Lẻ / Bộ)
@@ -334,37 +464,136 @@ async function removeFavoriteFromModal(movieId, btnElement) {
  * Populate filter dropdowns
  */
 function populateFilters() {
-  // Categories
-  const categoryFilter = document.getElementById("filterCategory");
-  if (categoryFilter) {
-    categoryFilter.innerHTML =
-      '<option value="">Tất cả thể loại</option>' +
-      allCategories
-        .map((c) => `<option value="${c.name}">${c.name}</option>`)
-        .join("");
+  // 1. Thể loại
+  const catList = document.getElementById("listFilterCategory");
+  const catInput = document.getElementById("inputFilterCategory");
+  if (catList && catInput) {
+    const categories = ['Tất cả thể loại', ...allCategories.map(c => c.name)];
+    initFilterBox("boxFilterCategory", catInput, catList, categories);
   }
 
-  // Countries
-  const countryFilter = document.getElementById("filterCountry");
-  if (countryFilter) {
-    countryFilter.innerHTML =
-      '<option value="">Tất cả quốc gia</option>' +
-      allCountries
-        .map((c) => `<option value="${c.name}">${c.name}</option>`)
-        .join("");
+  // 2. Quốc gia
+  const countryList = document.getElementById("listFilterCountry");
+  const countryInput = document.getElementById("inputFilterCountry");
+  if (countryList && countryInput) {
+    const countries = ['Tất cả quốc gia', ...allCountries.map(c => c.name)];
+    initFilterBox("boxFilterCountry", countryInput, countryList, countries);
   }
 
-  // Years
-  const yearFilter = document.getElementById("filterYear");
-  if (yearFilter) {
-    const years = [...new Set(allMovies.map((m) => m.year))].sort(
-      (a, b) => b - a,
-    );
-    yearFilter.innerHTML =
-      '<option value="">Tất cả năm</option>' +
-      years.map((y) => `<option value="${y}">${y}</option>`).join("");
+  // 3. Năm
+  const yearList = document.getElementById("listFilterYear");
+  const yearInput = document.getElementById("inputFilterYear");
+  if (yearList && yearInput) {
+    const years = ['Tất cả năm', ...[...new Set(allMovies.map((m) => m.year))].sort((a, b) => b - a)];
+    initFilterBox("boxFilterYear", yearInput, yearList, years);
   }
 }
+
+/**
+ * Khởi tạo logic cho Filter Box tùy chỉnh
+ */
+function initFilterBox(boxId, input, list, data, filterFunctionId = 'filterMovies') {
+    const box = document.getElementById(boxId);
+    
+    const renderList = (inputValue = "") => {
+        // Lấy danh sách đã chọn thực tế - xử lý an toàn
+        const selectedValues = input.value.split(',').map(v => v.trim()).filter(Boolean);
+        
+        // Tách từ khóa tìm kiếm (chỉ lấy phần sau dấu phẩy cuối cùng)
+        const parts = inputValue.split(',');
+        const filterText = parts[parts.length - 1].trim().toLowerCase();
+        
+        let filtered = data.filter(item => 
+            item.toString().toLowerCase().includes(filterText)
+        );
+
+        list.innerHTML = filtered.map(item => {
+            const isSelected = selectedValues.includes(item.toString());
+            const isAllMode = item.toString().includes("Tất cả");
+            return `
+                <div class="suggestion-item ${isSelected ? 'selected' : ''} ${isAllMode ? 'item-all' : ''}" 
+                     onclick="selectFilterItem(event, '${boxId}', '${input.id}', '${item}', '${filterFunctionId}')">
+                    <span class="item-label">${item}</span>
+                    ${isSelected ? '<i class="fas fa-times btn-remove-item"></i>' : ''}
+                </div>
+            `;
+        }).join("");
+    };
+
+    renderList();
+
+    input.oninput = (e) => {
+        renderList(e.target.value);
+    };
+
+    // Chuyển sang onclick để nhấn là mở, kể cả khi đã focus
+    input.onclick = (e) => {
+        e.stopPropagation(); // Ngăn sự kiện click global đóng nó ngay lập tức
+        const isActive = box.classList.contains('active');
+        
+        // Nếu click vào cái đang mở thì không đóng (theo yêu cầu user)
+        // Nhưng nếu click sang cái khác thì đóng cái cũ mở cái mới
+        if (!isActive) {
+            document.querySelectorAll('.custom-filter-box').forEach(b => b.classList.remove('active'));
+            box.classList.add('active');
+            renderList(input.value);
+            input.select(); // Tự động bôi đen để gõ tìm kiếm mới nhanh hơn
+        }
+    };
+
+    box.onclick = (e) => {
+        e.stopPropagation();
+        if (!box.classList.contains('active')) {
+            input.click(); // Giả lập click vào input để mở
+        }
+    };
+}
+
+/**
+ * Chọn một món trong danh sách gợi ý
+ */
+function selectFilterItem(event, boxId, inputId, value, filterFunctionId = 'filterMovies') {
+    if (event) {
+        event.stopPropagation(); // QUAN TRỌNG: Ngăn bọt khí (bubbles) làm đóng menu
+    }
+    
+    const input = document.getElementById(inputId);
+    const box = document.getElementById(boxId);
+    
+    let currentValues = input.value.split(',').map(v => v.trim()).filter(Boolean);
+    
+    if (value.includes("Tất cả")) {
+        currentValues = []; // Clear all
+    } else {
+        const index = currentValues.indexOf(value);
+        if (index > -1) {
+            currentValues.splice(index, 1); // Deselect
+        } else {
+            currentValues.push(value); // Select
+        }
+    }
+    
+    input.value = currentValues.join(', ');
+    
+    // Tự động thêm dấu phẩy nếu danh sách không trống để báo hiệu chọn tiếp
+    if (input.value && !input.value.endsWith(', ')) {
+        input.value += ', ';
+    }
+
+    // Render lại trạng thái list mà không đóng menu
+    const eventInput = new Event('input', { bubbles: true });
+    input.dispatchEvent(eventInput);
+    
+    // Đảm bảo tiêu điểm vẫn ở input để user gõ tiếp
+    input.focus();
+}
+
+// Đóng mọi dropdown khi bấm ra ngoài
+document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-filter-box').forEach(box => {
+        box.classList.remove('active');
+    });
+});
 // ... (Code cũ giữ nguyên)
 
 /**
@@ -432,10 +661,10 @@ function filterByCategoryFromList(categoryName) {
   // 1. Chuyển trang
   showPage("movies");
 
-  // 2. Gán giá trị vào ô lọc
-  const select = document.getElementById("filterCategory");
-  if (select) {
-    select.value = categoryName;
+  // 2. Gán giá trị vào ô lọc mới
+  const input = document.getElementById("inputFilterCategory");
+  if (input) {
+    input.value = categoryName;
     // 3. Gọi hàm lọc
     filterMovies();
   }
@@ -498,9 +727,9 @@ function renderCountriesList() {
 // Hàm chuyển trang và lọc theo quốc gia
 function filterByCountryFromList(countryName) {
   showPage("movies");
-  const select = document.getElementById("filterCountry");
-  if (select) {
-    select.value = countryName;
+  const input = document.getElementById("inputFilterCountry");
+  if (input) {
+    input.value = countryName;
     filterMovies();
   }
 }
@@ -660,6 +889,18 @@ function createLandscapeMovieCard(movie) {
   const likeClass = isLiked ? "liked" : "";
   const matchScore = movie.rating ? Math.round(movie.rating * 10) : 95;
 
+  // Tính badge trạng thái tập (chỉ cho phim bộ)
+  let lsEpisodeBadge = "";
+  if (movie.type === "series") {
+    const currentEps = (movie.episodes || []).length;
+    const totalEps = movie.totalEpisodes || 0;
+    if (totalEps > 0 && currentEps >= totalEps) {
+      lsEpisodeBadge = `<div class="landscape-badge" style="left: 10px; right: auto; top: 10px; bottom: auto; background: rgba(81,207,102,0.9);">FULL</div>`;
+    } else if (totalEps > 0) {
+      lsEpisodeBadge = `<div class="landscape-badge" style="left: 10px; right: auto; top: 10px; bottom: auto; background: rgba(255,193,7,0.85); color: #000;">Tập ${currentEps}/${totalEps}</div>`;
+    }
+  }
+
   return `
         <div class="movie-card-landscape movie-card-wrapper" id="movie-wrapper-ls-${movie.id}" onclick="handleMovieClick(event, '${movie.id}')">
             <div class="landscape-img-container" style="background-image: url('${imageUrl}');">
@@ -669,6 +910,7 @@ function createLandscapeMovieCard(movie) {
                     ? `<div class="landscape-badge" style="left: auto; right: 10px;">Phần ${movie.part}</div>`
                     : ""
                 }
+                ${lsEpisodeBadge}
             </div>
             <div class="landscape-info">
                 <div class="landscape-title">${movie.title}</div>

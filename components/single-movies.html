@@ -5,24 +5,41 @@
         </button>
         <h2 class="section-title" style="margin-bottom: 0;">Kho Phim Lẻ</h2>
     </div>
-    <div class="search-filter" style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <!-- Filters -->
-        <select id="filterSingleGenre" class="form-select" style="width: auto; padding: 8px; border-radius: 4px; background: #2a2a3a; color: #fff; border: 1px solid #444;" onchange="filterSingleMovies()">
-            <option value="">Tất cả Thể loại</option>
-        </select>
-        <select id="filterSingleCountry" class="form-select" style="width: auto; padding: 8px; border-radius: 4px; background: #2a2a3a; color: #fff; border: 1px solid #444;" onchange="filterSingleMovies()">
-            <option value="">Tất cả Quốc gia</option>
-        </select>
-        <select id="filterSingleYear" class="form-select" style="width: auto; padding: 8px; border-radius: 4px; background: #2a2a3a; color: #fff; border: 1px solid #444;" onchange="filterSingleMovies()">
-            <option value="">Tất cả Năm</option>
-        </select>
-
+    <div class="search-filter">
         <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" class="form-input" id="searchSingleMovies" placeholder="Tìm tên phim, diễn viên..." oninput="filterSingleMovies()" />
+            <input type="text" class="form-input" id="searchSingleMovies" placeholder="Tìm phim lẻ..." oninput="filterSingleMovies()" />
+        </div>
+        <div class="custom-filter-group">
+            <!-- Thể loại -->
+            <div class="custom-filter-box" id="boxSingleCategory">
+                <i class="fas fa-tags"></i>
+                <input type="text" id="inputSingleCategory" placeholder="Thể loại..." autocomplete="off">
+                <div class="suggestions-dropdown" id="listSingleCategory"></div>
+            </div>
+
+            <!-- Quốc gia -->
+            <div class="custom-filter-box" id="boxSingleCountry">
+                <i class="fas fa-globe-asia"></i>
+                <input type="text" id="inputSingleCountry" placeholder="Quốc gia..." autocomplete="off">
+                <div class="suggestions-dropdown" id="listSingleCountry"></div>
+            </div>
+
+            <!-- Năm -->
+            <div class="custom-filter-box" id="boxSingleYear">
+                <i class="fas fa-calendar-alt"></i>
+                <input type="text" id="inputSingleYear" placeholder="Năm..." autocomplete="off">
+                <div class="suggestions-dropdown" id="listSingleYear"></div>
+            </div>
+
+            <!-- Nút Xác Nhận Lọc -->
+            <button class="btn-filter-apply" onclick="filterSingleMovies()">
+                <i class="fas fa-filter"></i> Lọc Phim
+            </button>
         </div>
     </div>
 </div>
+<div id="filterResultSummary" class="filter-result-summary"></div>
 <div class="movie-grid" id="singleMoviesGrid">
     <div class="text-center">Đang tải phim lẻ...</div>
 </div>

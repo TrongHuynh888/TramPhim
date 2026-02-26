@@ -148,6 +148,10 @@ function viewActorDetail(actorName) {
             <span class="meta-value">${dob || 'Đang cập nhật'}</span>
           </div>
           <div class="actor-meta-item">
+            <span class="meta-label"><strong>Nơi sống:</strong></span>
+            <span class="meta-value">${dbActor?.country || 'Đang cập nhật'}</span>
+          </div>
+          <div class="actor-meta-item">
             <span class="meta-label"><strong>Số phim:</strong></span>
             <span class="meta-value">${actorMovies.length} phim</span>
           </div>

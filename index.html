@@ -356,32 +356,39 @@
                   class="form-input"
                   id="searchMovies"
                   placeholder="Tìm kiếm phim..."
-                  oninput="searchMovies()"
+                  onkeydown="if(event.key==='Enter') filterMovies()"
                 />
               </div>
-              <select
-                class="form-select"
-                id="filterCategory"
-                onchange="filterMovies()"
-              >
-                <option value="">Tất cả thể loại</option>
-              </select>
-              <select
-                class="form-select"
-                id="filterCountry"
-                onchange="filterMovies()"
-              >
-                <option value="">Tất cả quốc gia</option>
-              </select>
-              <select
-                class="form-select"
-                id="filterYear"
-                onchange="filterMovies()"
-              >
-                <option value="">Tất cả năm</option>
-              </select>
+              <div class="custom-filter-group">
+                <!-- Thể loại -->
+                <div class="custom-filter-box" id="boxFilterCategory">
+                  <i class="fas fa-tags"></i>
+                  <input type="text" id="inputFilterCategory" placeholder="Thể loại..." autocomplete="off">
+                  <div class="suggestions-dropdown" id="listFilterCategory"></div>
+                </div>
+
+                <!-- Quốc gia -->
+                <div class="custom-filter-box" id="boxFilterCountry">
+                  <i class="fas fa-globe-asia"></i>
+                  <input type="text" id="inputFilterCountry" placeholder="Quốc gia..." autocomplete="off">
+                  <div class="suggestions-dropdown" id="listFilterCountry"></div>
+                </div>
+
+                <!-- Năm -->
+                <div class="custom-filter-box" id="boxFilterYear">
+                  <i class="fas fa-calendar-alt"></i>
+                  <input type="text" id="inputFilterYear" placeholder="Năm..." autocomplete="off">
+                  <div class="suggestions-dropdown" id="listFilterYear"></div>
+                </div>
+
+                <!-- Nút Xác Nhận Lọc -->
+                <button class="btn-filter-apply" onclick="filterMovies()">
+                  <i class="fas fa-filter"></i> Lọc Phim
+                </button>
+              </div>
             </div>
           </div>
+          <div id="filterResultSummary" class="filter-result-summary"></div>
           <div class="movie-grid" id="allMoviesGrid">
             <!-- Movies sẽ được load từ Firestore -->
           </div>

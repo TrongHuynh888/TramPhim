@@ -402,24 +402,42 @@ function renderDetailActorSidebar(movie) {
     const grid = document.getElementById("detailActorGrid");
     if (!grid) return;
 
-    if (!movie.cast) {
+    if (!movie.cast && (!movie.castData || movie.castData.length === 0)) {
         grid.innerHTML = '<p style="color: #888; font-size: 13px; text-align: center;">Chưa có thông tin diễn viên.</p>';
         return;
     }
 
-    const names = movie.cast.split(",").map(n => n.trim()).filter(n => n);
+    // Ưu tiên dùng castData (mảng đối tượng ID & Name) để liên kết ID bền vững
+    // Nếu chưa có castData (phim cũ), dùng cast (string) làm dự phòng (fallback)
+    let actorsToRender = [];
+    if (movie.castData && Array.isArray(movie.castData) && movie.castData.length > 0) {
+        actorsToRender = movie.castData.map(a => ({ id: a.id, name: a.name }));
+    } else if (movie.cast) {
+        actorsToRender = movie.cast.split(",").map(n => ({ id: null, name: n.trim() })).filter(a => a.name);
+    }
 
-    grid.innerHTML = names.map(name => {
+    grid.innerHTML = actorsToRender.map(actor => {
+        const name = actor.name;
         // Tra cứu ảnh thật từ allActors
         let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=120&bold=true&font-size=0.35`;
 
         if (typeof allActors !== 'undefined' && allActors) {
-            const q = name.toLowerCase();
-            const dbActor = allActors.find(a => {
-                if (a.name.toLowerCase() === q) return true;
-                if (a.altNames && a.altNames.some(alt => alt.toLowerCase() === q)) return true;
-                return false;
-            });
+            let dbActor = null;
+            
+            // 1. Ưu tiên tìm theo ID
+            if (actor.id) {
+                dbActor = allActors.find(a => a.id === actor.id);
+            }
+            
+            // 2. Dự phòng tìm theo tên nếu không tìm thấy ID (Phòng hờ dữ liệu cũ hoặc lỗi ID)
+            if (!dbActor) {
+                const q = name.toLowerCase();
+                dbActor = allActors.find(a => 
+                    a.name.toLowerCase() === q || 
+                    (a.altNames && a.altNames.some(alt => alt.toLowerCase() === q))
+                );
+            }
+            
             if (dbActor && dbActor.avatar) {
                 avatarUrl = dbActor.avatar;
             }
@@ -1387,6 +1405,22 @@ async function checkAndUpdateVideoAccess() {
           iframePlayer.addEventListener('load', function() {
               startYouTubeTimeTracking();
           });
+          
+      } else if (videoType === "embed") {
+          // Xử lý link Embed trực tiếp (iframe URL)
+          iframePlayer.classList.remove("hidden");
+          
+          let embedUrl = videoSource;
+          // Nếu source chứa nguyên thẻ <iframe>, trích xuất link từ src="..."
+          if (videoSource.includes("<iframe")) {
+              const match = videoSource.match(/src="([^"]+)"/);
+              if (match && match[1]) {
+                  embedUrl = match[1];
+              }
+          }
+          
+          iframePlayer.src = embedUrl;
+          currentVideoType = "embed";
           
       } else if (videoType === "hls") {
            // --- FIX EMBED IFRAME ---
