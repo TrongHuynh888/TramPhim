@@ -325,14 +325,14 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   @media (min-width: 769px) {
     .page {
       min-height: 80vh !important;
-      padding-top: 150px !important;
+      padding-top: 100px !important;
     }
   }
   
-  /* Riêng Tablet dọc (iPad Portrait) cần padding nhiều hơn */
+  /* Riêng Tablet dọc (iPad Portrait) cần padding đúng 100px */
   @media (min-width: 769px) and (orientation: portrait) {
     .page {
-      padding-top: 160px !important;
+      padding-top: 100px !important;
     }
     .footer {
       margin-top: auto !important;
@@ -386,9 +386,10 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
     display: flex !important;
     align-items: center;
     gap: 4px;
-    flex: 1; /* Tự động chiếm khoảng trống thừa bên trái */
+    flex: 1; /* Tự động chiếm khoảng trống thừa */
     min-width: 0;
     margin-right: 5px;
+    justify-content: flex-start !important;
   }
   .nav-logo .logo-img {
     height: 50px; /* Reset to safe mobile size */
@@ -398,6 +399,32 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   }
 
   /* 2. Nhóm nút bên phải (Chứa tất cả icon) */
+  #sidebarToggleBtn {
+    width: 32px !important;
+    height: 32px !important;
+    margin-right: 5px !important; 
+    font-size: 14px !important;
+    background: rgba(128, 128, 128, 0.15) !important;
+    border: 1px solid rgba(128, 128, 128, 0.1) !important;
+  }
+  
+  /* [NEW] Ẩn nút 3 gạch (sidebar toggle) khi ở Admin trên Mobile */
+  /* Chỉ ẩn nút mở sidebar bên trái logo, giữ lại nút menu bên phải */
+  body.admin-mode #sidebarToggleBtn,
+  .admin-mode #sidebarToggleBtn {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  
+  #sidebarToggleBtn i {
+    font-size: 14px !important;
+  }
+
   .nav-actions {
     display: flex !important;
     align-items: center !important;
@@ -1340,6 +1367,53 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   }
 
   /* --- J. FIX TRÀN GRID (Watch Party & Admin) --- */
+  .admin-mobile-toggle {
+    display: flex !important;
+    margin-right: 12px !important;
+    width: auto !important;
+    padding: 0 10px 0 16px !important; /* Tăng padding để thanh dọc rõ hơn */
+    height: 35px !important;
+    background: transparent !important;
+    background-color: transparent !important; /* Ép không màu */
+    border: none !important;
+    box-shadow: none !important; /* Bỏ mọi bóng đổ */
+    position: relative;
+    border-left: 3px solid var(--accent-primary) !important; /* Gạch dọc nhỏ chuyên nghiệp */
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 !important;
+    outline: none !important;
+    margin-bottom: 20px !important; /* Tăng khoảng cách đáng kể với tiêu đề */
+    width: fit-content !important;
+  }
+
+  .admin-mobile-toggle i {
+    font-size: 1.1rem !important;
+    color: var(--accent-primary) !important;
+    filter: drop-shadow(0 0 5px rgba(78, 205, 196, 0.3));
+    border-radius: 0 !important;
+    outline: none !important;
+    margin-bottom: 12px !important; /* Khoảng cách nhỏ với tiêu đề */
+    width: fit-content !important;
+  }
+
+  .admin-panel-header {
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    margin-bottom: 25px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 15px;
+    flex-direction: column !important; /* Xếp chồng dọc cho đẹp */
+    align-items: flex-start !important;
+  }
+
+  .admin-panel-title {
+    font-size: 1.5rem !important;
+    margin: 5px 0 0 0 !important; /* Đảm bảo có khoảng cách dưới nút mũi tên */
+    font-weight: 800 !important;
+  }
+
   .party-grid,
   .stats-grid {
     grid-template-columns: 1fr !important;

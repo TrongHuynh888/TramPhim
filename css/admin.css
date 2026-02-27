@@ -2,10 +2,14 @@
    ADMIN.CSS - GIAO DIỆN QUẢN TRỊ VIÊN
    ============================================ */
 
+#adminPage {
+  padding-top: 0 !important;
+}
+
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  padding-top: 70px;
+  padding-top: 100px;
 }
 
 /* --- SIDEBAR (THANH MENU TRÁI) --- */
@@ -15,7 +19,7 @@
   border-right: 1px solid var(--border-color);
   padding: var(--spacing-lg) 0;
   position: fixed;
-  top: 70px;
+  top: 100px;
   bottom: 0;
   left: 0;
   overflow-y: auto;
@@ -223,6 +227,31 @@
   flex-wrap: wrap;
   gap: var(--spacing-md);
 }
+
+.admin-mobile-toggle {
+  display: none; /* Ẩn trên PC */
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  font-size: 1.2rem;
+  padding: 5px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.admin-mobile-toggle i {
+  transition: transform 0.3s ease;
+}
+
+/* Khi sidebar active (mở) thì xoay mũi tên lại nếu cần, 
+   nhưng ở đây mobile toggle chỉ dùng để mở, overlay dùng để đóng.
+   Tuy nhiên ta có thể thêm class để xoay */
+.admin-sidebar.active ~ .admin-content .admin-mobile-toggle i {
+  transform: rotate(180deg);
+}
+
 .search-filter {
   display: flex;
   gap: var(--spacing-md);
@@ -348,6 +377,11 @@
     margin-left: 0 !important;
     padding: 15px !important;
     width: 100% !important;
+    padding-top: 15px !important;
+  }
+
+  .admin-layout {
+    padding-top: 70px !important;
   }
 
   /* Header panel: xếp dọc */
@@ -755,7 +789,7 @@
 .bulk-actions-bar {
   display: none; /* Hiện khi có item được chọn */
   position: sticky;
-  top: 70px;
+  top: 100px;
   background: rgba(229, 9, 20, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(229, 9, 20, 0.3);
@@ -794,7 +828,7 @@
     flex-direction: column;
     gap: 12px;
     align-items: flex-start;
-    top: 60px;
+    top: 70px;
   }
 }
 
@@ -878,4 +912,18 @@
   0% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.1); opacity: 0.8; }
   100% { transform: scale(1); opacity: 1; }
+}
+/* Category Tags in Avatar Library */
+.category-tag {
+    transition: all 0.2s ease;
+}
+
+.category-tag:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+.category-tag i:hover {
+    color: var(--accent-primary) !important;
+    transform: scale(1.2);
 }

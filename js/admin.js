@@ -82,6 +82,9 @@ async function loadAdminData() {
 
     // Load RapChieuPhim API Key
     loadRapApiKey();
+
+    // ✅ Cập nhật thống kê Dashboard
+    await loadAdminStats();
   } catch (error) {
     console.error("Lỗi load admin data:", error);
   }
@@ -5729,3 +5732,276 @@ window.applyAllActorUpdates = async function() {
         showLoading(false);
     }
 }
+
+/**
+ * QUẢN LÝ KHO AVATAR (AVATAR LIBRARY)
+ */
+
+// Load danh sách avatar trong trang Admin
+async function adminLoadAvatarLibrary() {
+    // Load danh mục trước để có dữ liệu cho dropdown và filter (nếu có)
+    await adminLoadAvatarCategories();
+    
+    const grid = document.getElementById("adminAvatarLibraryGrid");
+    const countSpan = document.getElementById("adminAvatarCount");
+    if (!grid) return;
+
+    grid.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
+
+    try {
+        const snapshot = await db.collection("avatar_library").orderBy("createdAt", "desc").get();
+        const avatars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        countSpan.innerText = `Số lượng: ${avatars.length}`;
+
+        if (avatars.length === 0) {
+            grid.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; padding: 40px;">Chưa có avatar nào trong kho.</p>';
+            return;
+        }
+
+        grid.innerHTML = avatars.map(item => `
+            <div class="avatar-item" style="border-radius: 12px; border-color: rgba(255,255,255,0.05); cursor: default; position: relative; overflow: hidden;">
+                <img src="${item.url}" alt="Avatar">
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; font-size: 10px; padding: 4px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
+                    ${item.category || 'Chưa phân loại'}
+                </span>
+                <button class="btn btn-danger btn-sm" onclick="adminDeleteAvatar('${item.id}')" 
+                    style="position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; border-radius: 50%; padding: 0; opacity: 0.8; background: #e50914; font-size: 10px; z-index: 2;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join("");
+
+    } catch (error) {
+        console.error("Lỗi load avatar library:", error);
+        grid.innerHTML = '<p class="text-error">Lỗi khi tải dữ liệu.</p>';
+    }
+}
+
+// Biến tạm để lưu file được chọn
+let pendingAvatarFile = null;
+
+// Xử lý khi Admin dán URL
+function adminHandleAvatarUrlInput(input) {
+    const url = input.value.trim();
+    const previewBox = document.getElementById("adminAvatarPreviewBox");
+    const previewImg = document.getElementById("adminAvatarPreview");
+    const saveBtn = document.getElementById("btnSaveAdminAvatar");
+    const cancelBtn = document.getElementById("btnCancelAdminAvatar");
+
+    if (url) {
+        previewImg.src = url;
+        previewBox.style.display = "flex";
+        saveBtn.style.display = "block";
+        cancelBtn.style.display = "block";
+        pendingAvatarFile = null; // Xóa file nếu đang có bộ nhớ tạm
+    } else if (!pendingAvatarFile) {
+        previewBox.style.display = "none";
+        saveBtn.style.display = "none";
+        cancelBtn.style.display = "none";
+    }
+}
+
+// Xử lý khi Admin chọn tệp từ máy
+function adminHandleAvatarFileSelect(input) {
+    if (!input.files || !input.files[0]) return;
+
+    pendingAvatarFile = input.files[0];
+    const previewBox = document.getElementById("adminAvatarPreviewBox");
+    const previewImg = document.getElementById("adminAvatarPreview");
+    const saveBtn = document.getElementById("btnSaveAdminAvatar");
+    const cancelBtn = document.getElementById("btnCancelAdminAvatar");
+
+    // Tạo URL tạm để xem trước
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        previewBox.style.display = "flex";
+        saveBtn.style.display = "block";
+        cancelBtn.style.display = "block";
+        // Bỏ giá trị URL input nếu đang chọn file
+        document.getElementById("newAdminAvatarUrl").value = "";
+    }
+    reader.readAsDataURL(pendingAvatarFile);
+}
+
+// Hủy bỏ việc thêm avatar
+function adminCancelAvatarAdd() {
+    document.getElementById("newAdminAvatarUrl").value = "";
+    document.getElementById("adminAvatarFileUpload").value = "";
+    document.getElementById("adminAvatarPreviewBox").style.display = "none";
+    document.getElementById("btnSaveAdminAvatar").style.display = "none";
+    document.getElementById("btnCancelAdminAvatar").style.display = "none";
+    pendingAvatarFile = null;
+}
+
+// Lưu avatar vào kho (Xử lý upload nếu cần)
+async function adminSaveAvatarToLibrary() {
+    const urlInput = document.getElementById("newAdminAvatarUrl");
+    const categorySelect = document.getElementById("newAdminAvatarCategory");
+    const category = categorySelect.value;
+    
+    let finalUrl = urlInput.value.trim();
+
+    // 1. Nếu có file đang chờ, tải lên Cloudinary trước
+    if (pendingAvatarFile) {
+        showLoading(true, "Đang tải ảnh lên Cloudinary...");
+        try {
+            finalUrl = await adminPerformCloudinaryUpload(pendingAvatarFile);
+        } catch (error) {
+            console.error("Lỗi upload:", error);
+            showNotification("Không thể tải ảnh lên Cloudinary.", "error");
+            showLoading(false);
+            return;
+        }
+        showLoading(false);
+    }
+
+    if (!finalUrl) {
+        showNotification("Vui lòng chọn ảnh hoặc nhập link!", "warning");
+        return;
+    }
+
+    // 2. Lưu vào Firestore
+    try {
+        await db.collection("avatar_library").add({
+            url: finalUrl,
+            category: category,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        showNotification(`Đã lưu avatar vào danh mục ${category}!`, "success");
+        adminCancelAvatarAdd(); // Reset UI
+        
+        // Xóa cache để User load lại danh sách mới nhất
+        if (typeof allAvatarsCache !== 'undefined') allAvatarsCache = [];
+        
+        adminLoadAvatarLibrary();
+    } catch (error) {
+        console.error("Lỗi lưu avatar:", error);
+        showNotification("Lỗi khi lưu vào cơ sở dữ liệu.", "error");
+    }
+}
+
+// Xóa avatar khỏi kho
+async function adminDeleteAvatar(id) {
+    if (!confirm("Bạn có chắc chắn muốn xóa avatar này khỏi kho?")) return;
+
+    try {
+        await db.collection("avatar_library").doc(id).delete();
+        showNotification("Đã xóa avatar!", "success");
+        adminLoadAvatarLibrary();
+    } catch (error) {
+        console.error("Lỗi xóa avatar:", error);
+        showNotification("Lỗi khi xóa. Vui lòng thử lại.", "error");
+    }
+}
+
+// Helper hàm upload Cloudinary
+async function adminPerformCloudinaryUpload(file) {
+    const CLOUD_NAME = "drhr0h7dd";
+    const UPLOAD_PRESET = "tramphim_preset";
+    const API_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
+    formData.append("folder", "movie_assets/Avatar_Accout");
+
+    const response = await fetch(API_URL, {
+        method: "POST",
+        body: formData
+    });
+
+    if (!response.ok) throw new Error("Upload thất bại");
+
+    const data = await response.json();
+    return data.secure_url;
+}
+
+// --- QUẢN LÝ DANH MỤC AVATAR ---
+
+// Load danh mục từ Firestore
+async function adminLoadAvatarCategories() {
+    const categoryList = document.getElementById("adminAvatarCategoryList");
+    const categorySelect = document.getElementById("newAdminAvatarCategory");
+    if (!categoryList || !categorySelect) return;
+
+    try {
+        const snapshot = await db.collection("avatar_categories").orderBy("name", "asc").get();
+        let categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Nếu chưa có danh mục nào, tạo mặc định
+        if (categories.length === 0) {
+            const defaults = ["Hoạt hình", "Meme", "Anime", "Người thật", "Khác"];
+            for (const name of defaults) {
+                await db.collection("avatar_categories").add({ name });
+            }
+            // Load lại sau khi tạo
+            return adminLoadAvatarCategories();
+        }
+
+        // Cập nhật giao diện list (có nút xóa)
+        categoryList.innerHTML = categories.map(cat => `
+            <div class="category-tag" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 15px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                ${cat.name}
+                <i class="fas fa-times" onclick="adminDeleteAvatarCategory('${cat.id}', '${cat.name}')" style="cursor: pointer; color: var(--text-muted); font-size: 10px;"></i>
+            </div>
+        `).join("");
+
+        // Cập nhật dropdown upload
+        categorySelect.innerHTML = categories.map(cat => `
+            <option value="${cat.name}">${cat.name}</option>
+        `).join("");
+
+        // Lưu vào global để user.js có thể dùng nếu cần
+        window.avatarCategoriesCache = categories.map(cat => cat.name);
+
+    } catch (error) {
+        console.error("Lỗi load danh mục avatar:", error);
+    }
+}
+
+// Thêm danh mục mới
+async function adminAddAvatarCategory() {
+    const input = document.getElementById("newAvatarCategoryName");
+    const name = input.value.trim();
+
+    if (!name) {
+        showNotification("Vui lòng nhập tên danh mục!", "warning");
+        return;
+    }
+
+    try {
+        await db.collection("avatar_categories").add({ name });
+        showNotification(`Đã thêm danh mục: ${name}`, "success");
+        input.value = "";
+        adminLoadAvatarCategories();
+        
+        // Reset cache của user để cập nhật tab mới
+        if (typeof allAvatarsCache !== 'undefined') allAvatarsCache = [];
+    } catch (error) {
+        console.error("Lỗi thêm danh mục:", error);
+        showNotification("Lỗi khi thêm danh mục.", "error");
+    }
+}
+
+// Xóa danh mục
+async function adminDeleteAvatarCategory(id, name) {
+    if (!confirm(`Bạn có chắc muốn xóa danh mục "${name}"?\nLưu ý: Các avatar thuộc danh mục này sẽ không bị xóa nhưng sẽ hiển thị là "Chưa phân loại".`)) return;
+
+    try {
+        await db.collection("avatar_categories").doc(id).delete();
+        showNotification("Đã xóa danh mục!", "success");
+        adminLoadAvatarCategories();
+        
+        // Reset cache của user
+        if (typeof allAvatarsCache !== 'undefined') allAvatarsCache = [];
+    } catch (error) {
+        console.error("Lỗi xóa danh mục:", error);
+        showNotification("Lỗi khi xóa.", "error");
+    }
+}
+
+
+// Bổ sung vào showAdminPanel (Hook) - ĐÃ DỜI VÀO index.html

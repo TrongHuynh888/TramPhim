@@ -199,10 +199,16 @@ function showPage(pageName, addToHistory = true) {
     if (footer) footer.style.display = "block";
   }
 
-  // 5. Nút sidebar (Ẩn/Hiện nút 3 gạch)
-  const sidebarBtn = document.getElementById("sidebarToggleBtn");
-  if (sidebarBtn) {
-    sidebarBtn.style.display = pageName === "admin" ? "block" : "none";
+  // 5. Nút sidebar (Quản lý trạng thái Admin Mode)
+  const navbar = document.getElementById("navbar");
+  if (navbar) {
+    if (pageName === "admin") {
+      navbar.classList.add("admin-mode");
+      document.body.classList.add("admin-mode");
+    } else {
+      navbar.classList.remove("admin-mode");
+      document.body.classList.remove("admin-mode");
+    }
   }
 
   // 👇 6. LOGIC MỚI: Nếu vào trang Thể loại thì vẽ danh sách ra
@@ -220,7 +226,8 @@ function showPage(pageName, addToHistory = true) {
   // Cuộn lên đầu
   window.scrollTo(0, 0);
 }
-/** <-- THÊM DẤU GẠCH CHÉO VÀO ĐẦU
+
+/**
  * Mở Modal bất kỳ (Dùng cho cả Đăng nhập, Profile, Thông báo...)
  */
 function openModal(modalId) {
@@ -922,4 +929,26 @@ function updatePageMetadata(title, description, imageUrl, url) {
   // nhưng khi tải qua JS SPA và user nhấn "Share", Chromium Mới nhất 
   // vẫn sẽ quét lại DOM hiện hành để tạo card Preview.
 }
+
+/* ============================================
+   XỬ LÝ NÚT CUỘN LÊN ĐẦU TRANG (SCROLL TO TOP)
+   ============================================ */
+window.scrollToTop = function() {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+};
+
+// Hiển thị nút khi cuộn xuống 300px
+window.addEventListener('scroll', function() {
+  const scrollTopBtn = document.getElementById('scrollTopBtn');
+  if (scrollTopBtn) {
+    if (window.scrollY > 300) {
+      scrollTopBtn.classList.add('show');
+    } else {
+      scrollTopBtn.classList.remove('show');
+    }
+  }
+});
 

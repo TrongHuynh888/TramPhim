@@ -869,12 +869,18 @@
 
           <div class="form-group" style="text-align: left">
             <label class="form-label">Đổi Avatar mới (Link ảnh):</label>
-            <input
-              type="url"
-              class="form-input"
-              id="profileNewAvatar"
-              placeholder="Nhập link ảnh mới..."
-            />
+            <div style="display: flex; gap: 8px;">
+                <input
+                  type="url"
+                  class="form-input"
+                  id="profileNewAvatar"
+                  placeholder="Nhập link ảnh mới..."
+                  style="flex: 1;"
+                />
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openAvatarLibraryModal()" style="white-space: nowrap; border-radius: 8px;">
+                    <i class="fas fa-images"></i> Kho ảnh
+                </button>
+            </div>
           </div>
 
           <button
@@ -1065,6 +1071,38 @@
                     <button type="submit" class="btn btn-primary">Lưu Lại</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Avatar Library Modal -->
+<div class="modal-overlay" id="avatarLibraryModal">
+    <div class="modal" style="max-width: 800px; width: 95%;">
+        <div class="modal-header">
+            <h3 class="modal-title">Kho Avatar</h3>
+            <button class="modal-close" onclick="closeModal('avatarLibraryModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="padding-top: 10px;">
+            <div class="avatar-filter-tabs" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 15px; scrollbar-width: none; -ms-overflow-style: none;">
+                <button class="filter-tab active" onclick="filterAvatarLibrary('Tất cả', this)">Tất cả</button>
+                <button class="filter-tab" onclick="filterAvatarLibrary('Hoạt hình', this)">Hoạt hình</button>
+                <button class="filter-tab" onclick="filterAvatarLibrary('Meme', this)">Meme</button>
+                <button class="filter-tab" onclick="filterAvatarLibrary('Anime', this)">Anime</button>
+                <button class="filter-tab" onclick="filterAvatarLibrary('Người thật', this)">Người thật</button>
+                <button class="filter-tab" onclick="filterAvatarLibrary('Khác', this)">Khác</button>
+            </div>
+            <div class="avatar-grid" id="avatarLibraryGrid">
+                <!-- Avatars will be loaded here -->
+                <div class="loading-spinner" style="margin: 20px auto;"></div>
+            </div>
+        </div>
+        <div class="modal-footer" style="padding: 15px 20px;">
+            <button class="btn btn-secondary" onclick="closeModal('avatarLibraryModal')">Đóng</button>
+            <button class="btn btn-primary" onclick="confirmAvatarSelection()">
+                <i class="fas fa-check"></i> Chọn ảnh này
+            </button>
         </div>
     </div>
 </div>

@@ -101,6 +101,14 @@
           <i class="fas fa-exclamation-triangle" style="color: #ff6b6b;"></i>
           <span>Báo Lỗi</span>
         </div>
+        <div
+          class="admin-nav-item"
+          data-panel="avatarLibrary"
+          onclick="showAdminPanel('avatarLibrary')"
+        >
+          <i class="fas fa-images" style="color: #fcd535;"></i>
+          <span>Kho Avatar</span>
+        </div>
       </nav>
     </aside>
 
@@ -109,6 +117,9 @@
       <!-- Dashboard Panel -->
       <div class="admin-panel active" id="dashboardPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Dashboard</h2>
           <span class="text-muted">Tổng quan hệ thống</span>
         </div>
@@ -173,9 +184,95 @@
         </div>
       </div>
 
+      <!-- Avatar Library Panel -->
+      <div class="admin-panel" id="avatarLibraryPanel">
+        <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <h2 class="admin-panel-title">Quản lý Kho Avatar</h2>
+          <div class="header-actions">
+            <!-- Nút Thêm mới đã được xóa theo yêu cầu -->
+          </div>
+        </div>
+
+        <div class="admin-notif-send-box" style="background: rgba(252, 213, 53, 0.05); border: 1px dashed var(--accent-primary); margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px; font-size: 1.1rem;"><i class="fas fa-upload" style="color: var(--accent-primary);"></i> Thêm Avatar mới</h3>
+          
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 15px;">
+            <!-- Preview Box -->
+            <div id="adminAvatarPreviewBox" style="display: none; flex-direction: column; align-items: center; gap: 8px;">
+              <div style="width: 80px; height: 80px; border-radius: 12px; border: 2px solid var(--accent-primary); overflow: hidden; background: rgba(0,0,0,0.2);">
+                <img id="adminAvatarPreview" src="" style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+              <span style="font-size: 0.75rem; color: var(--accent-primary);">Xem trước</span>
+            </div>
+
+            <div style="flex: 1; display: grid; grid-template-columns: minmax(150px, 1fr) 3fr; gap: 15px; align-items: flex-end;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Danh mục</label>
+                <select class="form-select" id="newAdminAvatarCategory" style="padding: 10px 15px;">
+                  <!-- Sẽ được load động -->
+                  <option value="Chưa phân loại">Sơ khai...</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Link hoặc Tải ảnh lên</label>
+                <div class="input-with-action" style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 0;">
+                  <input type="url" class="form-input" id="newAdminAvatarUrl" placeholder="https://..." style="flex: 1; padding: 10px 15px;" oninput="adminHandleAvatarUrlInput(this)" />
+                  <button type="button" class="btn btn-action-glass" onclick="document.getElementById('adminAvatarFileUpload').click()" style="padding: 10px 15px; white-space: nowrap;">
+                    <i class="fas fa-file-upload"></i> Chọn ảnh
+                  </button>
+                  <input type="file" id="adminAvatarFileUpload" accept="image/*" style="display: none;" onchange="adminHandleAvatarFileSelect(this)" />
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; width: 100%; justify-content: flex-end; margin-top: 10px;">
+              <button class="btn btn-primary" id="btnSaveAdminAvatar" onclick="adminSaveAvatarToLibrary()" style="padding: 10px 20px; white-space: nowrap; display: none;">
+                <i class="fas fa-save"></i> Lưu Avatar
+              </button>
+              <button class="btn btn-secondary" id="btnCancelAdminAvatar" onclick="adminCancelAvatarAdd()" style="padding: 10px 20px; white-space: nowrap; display: none;">
+                Hủy
+              </button>
+            </div>
+          </div>
+          
+          <small class="text-muted" style="display: block; margin-bottom: 15px;">* Bạn có thể nhập Link ảnh hoặc tải tệp lên từ máy. Cloudinary sẽ tự động xử lý lưu trữ.</small>
+
+          <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px; margin-top: 15px;">
+            <h4 style="margin-bottom: 12px; font-size: 0.95rem; color: var(--accent-primary);"><i class="fas fa-tags"></i> Tùy biến Danh mục</h4>
+            <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+              <div class="form-group" style="flex: 1; margin-bottom: 0; min-width: 200px;">
+                <input type="text" class="form-input" id="newAvatarCategoryName" placeholder="Tên danh mục mới (VD: Siêu anh hùng...)" style="height: 38px;" />
+              </div>
+              <button class="btn btn-success btn-sm" onclick="adminAddAvatarCategory()" style="height: 38px;">
+                <i class="fas fa-plus"></i> Thêm mới
+              </button>
+            </div>
+            <div id="adminAvatarCategoryList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+              <!-- Categories load động -->
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-size: 1.2rem;"><i class="fas fa-th-large"></i> Danh sách ảnh đang có</h3>
+            <span class="text-muted" id="adminAvatarCount">Số lượng: 0</span>
+          </div>
+          <div class="avatar-grid" id="adminAvatarLibraryGrid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px;">
+            <!-- Data will be loaded here -->
+            <div class="loading-spinner" style="margin: 20px auto;"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Movies Panel -->
       <div class="admin-panel" id="moviesPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Phim</h2>
           <div class="header-actions">
             <button class="btn btn-secondary" onclick="syncAllMoviesActors()" title="Đồng bộ ID diễn viên cho toàn bộ phim">
@@ -254,6 +351,9 @@
       <!-- Episodes Panel -->
       <div class="admin-panel" id="episodesPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Tập Phim</h2>
         </div>
 
@@ -350,6 +450,9 @@
       <!-- Categories Panel -->
       <div class="admin-panel" id="categoriesPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Thể Loại</h2>
           <button class="btn btn-primary" onclick="openCategoryModal()">
             <i class="fas fa-plus"></i> Thêm thể loại
@@ -388,6 +491,9 @@
       <!-- Countries Panel -->
       <div class="admin-panel" id="countriesPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Quốc Gia</h2>
           <button class="btn btn-primary" onclick="openCountryModal()">
             <i class="fas fa-plus"></i> Thêm Quốc Gia
@@ -426,6 +532,9 @@
       <!-- Actors Panel -->
       <div class="admin-panel" id="actorsPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Diễn Viên</h2>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-success" onclick="toggleActorApiImport()">
@@ -543,6 +652,9 @@
       <!-- Users Panel -->
       <div class="admin-panel" id="usersPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Người Dùng</h2>
         </div>
 
@@ -585,6 +697,9 @@
       <!-- Comments Panel -->
       <div class="admin-panel" id="commentsPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Bình Luận</h2>
         </div>
 
@@ -634,6 +749,9 @@
       <!-- Transactions Panel -->
       <div class="admin-panel" id="transactionsPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Lịch Sử Giao Dịch</h2>
         </div>
 
@@ -657,6 +775,9 @@
       <!-- Notifications Management Panel -->
       <div class="admin-panel" id="notificationsPanel">
         <div class="admin-panel-header">
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
           <h2 class="admin-panel-title">Quản lý Thông báo</h2>
         </div>
 
@@ -839,7 +960,10 @@
       <!-- VIP Requests Panel -->
       <div class="admin-panel" id="vipRequestsPanel">
         <div class="admin-panel-header">
-          <h2 class="admin-panel-title">Quản lý Yêu Cầu Nâng VIP</h2>
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <h2 class="admin-panel-title">Yêu Cầu Nâng Cấp VIP</h2>
         </div>
 
         <div class="search-filter mb-3" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
@@ -901,7 +1025,10 @@
       <!-- Error Reports Panel -->
       <div class="admin-panel" id="errorReportsPanel">
         <div class="admin-panel-header">
-          <h2 class="admin-panel-title">Quản lý Báo Lỗi</h2>
+          <button class="admin-mobile-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <h2 class="admin-panel-title">Báo Lỗi Phim & Hệ Thống</h2>
         </div>
 
         <div class="search-filter mb-3" style="display: flex; gap: 15px; align-items: center;">
@@ -951,6 +1078,7 @@
         </div>
 
       </div>
+
     </div>
   </div>
 </div>

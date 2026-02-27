@@ -651,3 +651,148 @@ async function removeMovieFromAlbum(albumId, movieId, btnElement) {
         showNotification("Có lỗi xảy ra khi xóa phim. Vui lòng thử lại.", "error");
     }
 }
+/**
+ * 4. THƯ VIỆN AVATAR MẪU
+ */
+let selectedAvatarUrl = ""; // Biến lưu ảnh đang chọn
+let allAvatarsCache = []; // Cache để lọc nhanh không cần gọi DB liên tục
+
+
+// Mở popup thư viện avatar
+async function openAvatarLibraryModal() {
+    openModal("avatarLibraryModal");
+    
+    // Load các tab danh mục động
+    await loadAvatarFilterTabs();
+    
+    // Load ảnh (mặc định tab đầu tiên hoặc Tất cả)
+    loadAvatarLibrary('Tất cả');
+}
+
+// Tải danh sách avatar từ Firestore hoặc dữ liệu cứng
+// Tải danh sách avatar từ Firestore hoặc dữ liệu cứng
+async function loadAvatarLibrary(category = 'Tất cả') {
+    const grid = document.getElementById("avatarLibraryGrid");
+    if (!grid) return;
+
+    grid.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
+
+    try {
+        // 1. Tải nếu chưa có cache
+        if (allAvatarsCache.length === 0 && db) {
+            const snapshot = await db.collection("avatar_library").orderBy("createdAt", "desc").get();
+            allAvatarsCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+
+        // 2. Lọc theo category
+        let filteredAvatars = [];
+        if (category === 'Tất cả') {
+            filteredAvatars = allAvatarsCache.map(item => item.url);
+        } else {
+            filteredAvatars = allAvatarsCache
+                .filter(item => item.category === category)
+                .map(item => item.url);
+        }
+
+        // 3. Nếu rỗng, hiển thị thông báo hoặc fallback (chỉ cho 'Tất cả')
+        if (filteredAvatars.length === 0) {
+            if (category === 'Tất cả') {
+                // Fallback mặc định nếu DB rỗng hoàn toàn
+                filteredAvatars = [
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka",
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=Nala",
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=Simba",
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack"
+                ];
+            } else {
+                grid.innerHTML = `<p class="text-muted" style="grid-column: 1/-1; text-align: center; padding: 20px;">Không có ảnh nào thuộc danh mục ${category}.</p>`;
+                return;
+            }
+        }
+
+        grid.innerHTML = filteredAvatars.map(url => `
+            <div class="avatar-item ${url === selectedAvatarUrl ? 'active' : ''}" onclick="selectAvatarItem('${url}', this)">
+                <img src="${url}" alt="Avatar Sample" onerror="this.src='https://placehold.co/100x100?text=Error'">
+            </div>
+        `).join("");
+
+    } catch (error) {
+        console.error("Lỗi tải thư viện avatar:", error);
+        grid.innerHTML = '<p class="text-error text-center">Không thể tải kho ảnh.</p>';
+    }
+}
+
+// Tải các tab danh mục động từ Firestore
+async function loadAvatarFilterTabs() {
+    const tabContainer = document.querySelector(".avatar-filter-tabs");
+    if (!tabContainer) return;
+
+    try {
+        // Ưu tiên dùng cache nếu admin vừa load, hoặc fetch mới
+        let categories = [];
+        if (window.avatarCategoriesCache) {
+            categories = window.avatarCategoriesCache;
+        } else if (db) {
+            const snapshot = await db.collection("avatar_categories").orderBy("name", "asc").get();
+            categories = snapshot.docs.map(doc => doc.data().name);
+        }
+
+        if (categories.length === 0) categories = ["Hoạt hình", "Meme", "Anime", "Người thật", "Khác"];
+
+        tabContainer.innerHTML = `
+            <button class="filter-tab active" onclick="filterAvatarLibrary('Tất cả', this)">Tất cả</button>
+            ${categories.map(cat => `
+                <button class="filter-tab" onclick="filterAvatarLibrary('${cat}', this)">${cat}</button>
+            `).join("")}
+        `;
+    } catch (error) {
+        console.error("Lỗi load tabs danh mục:", error);
+    }
+}
+
+// Xử lý chuyển đổi danh mục (Lọc)
+function filterAvatarLibrary(category, btn) {
+    // 1. Đổi active tab
+    const tabs = document.querySelectorAll(".filter-tab");
+    tabs.forEach(tab => tab.classList.remove("active"));
+    btn.classList.add("active");
+
+    // 2. Load lại với category
+    loadAvatarLibrary(category);
+}
+
+// Xử lý khi click chọn 1 ảnh
+function selectAvatarItem(url, element) {
+    selectedAvatarUrl = url;
+    
+    // Bỏ active cũ
+    const items = document.querySelectorAll(".avatar-item");
+    items.forEach(item => item.classList.remove("active"));
+    
+    // Thêm active mới
+    element.classList.add("active");
+}
+
+// Xác nhận chọn ảnh
+function confirmAvatarSelection() {
+    if (!selectedAvatarUrl) {
+        showNotification("Vui lòng chọn một avatar!", "warning");
+        return;
+    }
+
+    // Cập nhật URL vào input của profile modal
+    const avatarInput = document.getElementById("profileNewAvatar");
+    if (avatarInput) {
+        avatarInput.value = selectedAvatarUrl;
+        
+        // Cập nhật luôn preview ảnh trong profile modal để người dùng thấy ngay
+        const previewImg = document.getElementById("profileCurrentAvatar");
+        if (previewImg) {
+            previewImg.src = selectedAvatarUrl;
+        }
+        
+        showNotification("Đã chọn avatar từ kho!", "success");
+        closeModal("avatarLibraryModal");
+    }
+}

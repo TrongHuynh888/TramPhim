@@ -78,18 +78,9 @@
       <div class="nav-container">
         <button
           id="sidebarToggleBtn"
-          class="btn-icon"
           onclick="toggleSidebar()"
-          style="
-            display: none;
-            margin-right: 15px;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            cursor: pointer;
-          "
         >
-          <i class="fas fa-bars" style="font-size: 24px"></i>
+          <i class="fas fa-bars"></i>
         </button>
 
         <!-- Logo -->
@@ -920,6 +911,11 @@
 
         if (targetPanel) {
           targetPanel.classList.add("active");
+          
+          // Thêm logic load cho Kho Avatar
+          if (panelName === 'avatarLibrary' && typeof adminLoadAvatarLibrary === 'function') {
+            adminLoadAvatarLibrary();
+          }
         } else {
           console.error("❌ Không tìm thấy trang có ID là: " + targetId);
           // Nếu không tìm thấy panel, thử hiện thông báo để kiểm tra
@@ -1002,5 +998,10 @@
             </div>
         </div>
     </div>
+    <!-- Back to Top Button -->
+    <button id="scrollTopBtn" class="scroll-top-btn" onclick="scrollToTop()">
+      <i class="fas fa-arrow-up"></i>
+      <span>ĐẦU TRANG</span>
+    </button>
   </body>
 </html>
