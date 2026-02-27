@@ -1341,6 +1341,10 @@ async function checkAndUpdateVideoAccess() {
     if (videoLocked) videoLocked.classList.add("hidden");
     if (videoPlayer) videoPlayer.classList.remove("hidden");
     
+    // Lưu trạng thái đang phát trước khi reload (để tự động phát tập mới nếu đang xem)
+    const container = document.getElementById("videoContainer");
+    const wasPlaying = container && container.classList.contains("playing");
+
     // Khởi tạo sự kiện cho trình phát tùy chỉnh
     setTimeout(initCustomPlayerEvents, 100);
 
@@ -1456,11 +1460,14 @@ async function checkAndUpdateVideoAccess() {
                    const isModalActive = document.getElementById("continueWatchingModal")?.classList.contains("active");
                    if (isModalActive) return; // Chờ người dùng click modal
                    
-                   if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
-                       resumeVideoAtTime(window.resumeTimeData.timeWatched);
-                   } else {
-                       player.play().catch(e => console.log("Auto-play blocked:", e));
-                   }
+                    if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
+                        resumeVideoAtTime(window.resumeTimeData.timeWatched);
+                    } else if (wasPlaying) {
+                        // Tự động phát nếu tập trước đó đang phát
+                        player.play().catch(e => console.log("Auto-play next ep blocked:", e));
+                    } else {
+                        player.play().catch(e => console.log("Auto-play blocked:", e));
+                    }
                };
 
                if (Hls.isSupported()) {
@@ -1487,11 +1494,13 @@ async function checkAndUpdateVideoAccess() {
               const isModalActive = document.getElementById("continueWatchingModal")?.classList.contains("active");
               if (isModalActive) return; // Chờ người dùng click modal
               
-              if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
-                  resumeVideoAtTime(window.resumeTimeData.timeWatched);
-              } else {
-                  player.play().catch(e => console.log("Auto-play blocked:", e));
-              }
+               if (window.hasResumeHistory && window.resumeTimeData && window.resumeTimeData.timeWatched > 0) {
+                   resumeVideoAtTime(window.resumeTimeData.timeWatched);
+               } else if (wasPlaying) {
+                   player.play().catch(e => console.log("Auto-play next ep blocked:", e));
+               } else {
+                   player.play().catch(e => console.log("Auto-play blocked:", e));
+               }
           };
           
           html5Player.addEventListener('loadedmetadata', function() {
@@ -1810,11 +1819,12 @@ function initCustomControls(video) {
         const isSettingsMenu = e.target.closest('.settings-menu');
         const isProgressContainer = e.target.closest('.video-progress-container');
         const isReactionSidebar = e.target.closest('.reaction-sidebar');
+        const isEpisodePanel = e.target.closest('.player-episode-panel');
         const isCenterBtn = e.target.closest('.center-btn');
         
-        // If clicking center button or reaction sidebar, let their own handlers work
-        if (isCenterBtn || isReactionSidebar) {
-            console.log("Click on center button or reaction sidebar, not toggling from container");
+        // If clicking center button, reaction sidebar, or episode panel, let their own handlers work
+        if (isCenterBtn || isReactionSidebar || isEpisodePanel) {
+            console.log("Click on UI element, not toggling from container");
             return;
         }
         
@@ -1860,41 +1870,63 @@ function initCustomControls(video) {
 }
 
 function showControls() {
+    const container = document.getElementById("videoContainer");
+    if (container) {
+        container.classList.remove("user-inactive");
+        container.classList.remove("hide-cursor");
+    }
+
     const controls = document.getElementById("customControls");
     const centerOverlay = document.getElementById("centerOverlay");
     const topBar = document.getElementById("playerTopBar");
+    
     if(controls) controls.classList.add("show");
     if(centerOverlay) centerOverlay.style.opacity = "1";
     if(topBar) topBar.classList.add("show");
-    const container = document.getElementById("videoContainer");
-    if(container) container.style.cursor = "default";
 }
 
 function hideControls() {
-    const controls = document.getElementById("customControls");
-    const centerOverlay = document.getElementById("centerOverlay");
-    const topBar = document.getElementById("playerTopBar");
+    const container = document.getElementById("videoContainer");
+    
     // Không ẩn nếu settings menu đang mở hoặc episode panel đang mở
     const settingsMenu = document.getElementById("settingsMenu");
     const episodePanel = document.getElementById("playerEpisodePanel");
     
-    if (episodePanel && episodePanel.classList.contains('open')) return;
+    // Kiểm tra menu cài đặt bằng class 'active' (đúng với logic toggle)
+    const isSettingsActive = settingsMenu && settingsMenu.classList.contains('active');
     
-    // Logic: Ẩn bottom bar + center overlay + top bar cùng lúc
-    if (controls && (!settingsMenu || settingsMenu.style.display === 'none')) {
-        controls.classList.remove("show");
-        if (centerOverlay) centerOverlay.style.opacity = "0";
-        if (topBar) topBar.classList.remove("show");
-        const container = document.getElementById("videoContainer");
-        if(container) container.style.cursor = "none";
+    if (episodePanel && episodePanel.classList.contains('open')) return;
+    if (isSettingsActive) return;
+
+    if (container) {
+        container.classList.add("user-inactive");
+        container.classList.add("hide-cursor");
     }
+
+    const controls = document.getElementById("customControls");
+    const centerOverlay = document.getElementById("centerOverlay");
+    const topBar = document.getElementById("playerTopBar");
+    
+    if (controls) controls.classList.remove("show");
+    if (centerOverlay) centerOverlay.style.opacity = "0";
+    if (topBar) topBar.classList.remove("show");
 }
 
 function resetHideTimer() {
     clearTimeout(hideControlsTimeout);
     hideControlsTimeout = setTimeout(() => {
-        if (videoEl && !videoEl.paused) hideControls();
-    }, 5000); // Ẩn sau 5 giây
+        // Kiểm tra xem video có đang phát không (Hỗ trợ cả HTML5 và YouTube)
+        let isPaused = true;
+        
+        if (videoEl && !videoEl.paused) {
+            isPaused = false;
+        } else if (window.ytPlayer && typeof window.ytPlayer.getPlayerState === 'function') {
+            // state 1 là đang phát (playing)
+            if (window.ytPlayer.getPlayerState() === 1) isPaused = false;
+        }
+        
+        if (!isPaused) hideControls();
+    }, 5000); // Giữ nguyên 5 giây theo yêu cầu
 }
 
 function formatTime(seconds) {

@@ -20,7 +20,10 @@
   left: 0;
   overflow-y: auto;
   z-index: 100;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              background-color 0.3s ease,
+              transform 0.3s ease;
+  will-change: width, transform;
 }
 
 .admin-nav {
@@ -38,7 +41,7 @@
   border-radius: var(--border-radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .admin-nav-item:hover,
@@ -88,7 +91,9 @@
   flex: 1;
   margin-left: 260px;
   padding: 30px;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  will-change: margin-left, width;
 }
 
 .admin-content.expanded {
@@ -286,14 +291,13 @@
     100% { transform: rotate(0deg) skewY(0deg); }
 }
 
-/* Sửa lỗi lá cờ bị ghi đè bởi quy tắc chung của bảng */
+/* Đã tắt animation flag-wave theo yêu cầu để giảm giật lag */
 .admin-table td .flag-icon-img {
     width: 18px !important;
     height: 10px !important; /* Tỉ lệ ~16:9 */
     object-fit: cover !important;
     border-radius: 2px !important; /* Phá bỏ hình tròn nếu bị ghi đè */
     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    animation: flag-wave 3s infinite ease-in-out;
     transform-origin: left center;
     vertical-align: middle;
     margin-right: 4px;

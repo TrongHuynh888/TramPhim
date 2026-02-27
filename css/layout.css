@@ -715,6 +715,19 @@
     opacity: 1;
 }
 
+/* Tự động ẩn khi không hoạt động (JS thêm class user-inactive) */
+.video-container.user-inactive .custom-video-controls,
+.video-container.user-inactive .center-controls-overlay,
+.video-container.user-inactive .wp-controls-bar,
+.video-container.user-inactive .wp-center-overlay {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.video-container.hide-cursor {
+    cursor: none !important;
+}
+
 /* Progress Bar Container */
 .video-progress-container {
     position: relative;

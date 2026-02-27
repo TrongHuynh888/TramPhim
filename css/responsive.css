@@ -1,8 +1,9 @@
-/* --- GLOBAL RESET: CHỐNG VỠ GIAO DIỆN --- */
-* {
-  box-sizing: border-box !important;
+/* Chống tràn ngang tuyệt đối cho toàn trang web */
+html, body {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  position: relative;
 }
-/* Chống tràn - nhưng loại trừ nav */
 body, .page, .section, .hero-banner, .movie-grid, .footer, main {
   max-width: 100vw !important;
 }
@@ -81,7 +82,7 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
 
     /* Class kích hoạt popup khi chạm */
     .movie-card-wrapper.active-mobile {
-      z-index: 900 !important;
+      z-index: 1500 !important; /* Hạ xuống dưới Navbar (2000) để không che Menu */
       position: relative;
     }
 
@@ -96,16 +97,17 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
       transform: translate(-50%, -50%) scale(1.05) !important; /* Scale nhẹ lại cho đỡ thô */
 
       /* Kích thước Tablet & Mobile (Mobile sẽ bị override ở dưới) */
-      width: 420px !important; 
+      width: 330px !important; 
       max-width: 90vw !important;
-      height: auto;
       max-height: 90vh !important;
-      overflow-y: auto !important;
       z-index: 950 !important;
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 1) !important;
+      /* 👇 KHỬ BÓNG ĐỔ THEO YÊU CẦU: Đặt về none để tránh hiện bóng đen dưới đáy */
+      box-shadow: none !important;
       border: 1px solid var(--accent-primary);
       background: #1f1f2e !important;
       color: #fff !important;
+      border-radius: 12px !important; /* ÉP BO GÓC CHUẨN: Đảm bảo đồng bộ cho tất cả popup */
+      overflow: hidden !important; /* QUAN TRỌNG: Để ảnh header bo theo khung không bị tràn cạnh */
       opacity: 1 !important;
       visibility: visible !important;
     }
@@ -118,11 +120,18 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
         pointer-events: none !important;
     }
 
-    /* FIX STACKING CONTEXT: Nâng section chứa popup lên trên các section khác */
-    .section-active-popup {
-        z-index: 1500 !important;
-        position: relative !important;
+    /* FIX LỖI MENU BỊ CHE: Đảm bảo Navbar luôn ở trên lớp popup active */
+    .navbar {
+        z-index: 3000 !important;
     }
+
+    /* FIX STACKING CONTEXT & OVERFLOW: Nâng section chứa popup lên cao nhất và không cắt popup */
+    .section-active-popup {
+        z-index: 1600 !important;
+        position: relative !important;
+        overflow: visible !important; /* Quan trọng: Không cắt popup nếu nó tràn ra ngoài card */
+    }
+
 
     /* Font chữ Popup Tablet */
     .movie-card-wrapper.active-mobile .popup-header-img {
@@ -247,16 +256,16 @@ body, .page, .section, .hero-banner, .movie-grid, .footer, main {
     /* --- SMART POSITIONING (XỬ LÝ TRÀN MÀN HÌNH) --- */
     /* 1. Mở sang phải (Khi thẻ ở lề trái) */
     .movie-card-wrapper.active-mobile.popup-align-left .movie-popup-nfx {
-        left: 0 !important;
-        transform: translateY(-50%) scale(1.05) !important;
+        left: 15px !important; /* TĂNG LÊN 15PX: Đảm bảo khoảng cách an toàn tuyệt đối với lề trái */
+        transform: translateY(-50%) scale(1) !important; /* KHỬ SCALE 1.05: Tránh việc nở ra lấn ngược vào lề */
         transform-origin: left center;
     }
 
     /* 2. Mở sang trái (Khi thẻ ở lề phải) */
     .movie-card-wrapper.active-mobile.popup-align-right .movie-popup-nfx {
         left: auto !important;
-        right: 0 !important;
-        transform: translateY(-50%) scale(1.05) !important;
+        right: 15px !important; /* TĂNG LÊN 15PX để cân xứng */
+        transform: translateY(-50%) scale(1) !important;
         transform-origin: right center;
     }
     

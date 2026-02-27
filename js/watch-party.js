@@ -1662,12 +1662,42 @@ function initWpCustomControls(video) {
         });
     }
 
-    // Show/Hide on hover
-    container.addEventListener("mousemove", () => {
-        clearTimeout(wpHideTimer);
-        wpHideTimer = setTimeout(() => {
-            // Auto-hide handled by CSS (playing state)
-        }, 3000);
+    // --- LOGIC TỰ ĐỘNG ẨN CONTROL ---
+    let hideTimeout = null;
+    function wpShowControls() {
+        container.classList.remove("user-inactive");
+        container.classList.remove("hide-cursor");
+        clearTimeout(hideTimeout);
+        
+        // Kiểm tra trạng thái phát (Hỗ trợ cả HTML5 và YouTube)
+        let isPaused = true;
+        if (video && !video.paused) {
+            isPaused = false;
+        } else if (window.player && typeof window.player.getPlayerState === 'function') {
+            // YouTube state 1 là đang phát
+            if (window.player.getPlayerState() === 1) isPaused = false;
+        }
+
+        if (!isPaused) {
+            hideTimeout = setTimeout(() => {
+                // Không ẩn nếu settings menu đang mở
+                const settingsMenu = document.getElementById("wpSettingsMenu");
+                if (settingsMenu && settingsMenu.style.display !== 'none') return;
+                
+                container.classList.add("user-inactive");
+                container.classList.add("hide-cursor");
+            }, 5000); // 5 giây theo yêu cầu
+        }
+    }
+
+    container.addEventListener("mousemove", wpShowControls);
+    container.addEventListener("touchstart", wpShowControls, { passive: true });
+    
+    video.addEventListener("play", wpShowControls);
+    video.addEventListener("pause", () => {
+        clearTimeout(hideTimeout);
+        container.classList.remove("user-inactive");
+        container.classList.remove("hide-cursor");
     });
 
     // Set initial state

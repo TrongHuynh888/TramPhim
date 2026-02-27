@@ -816,7 +816,7 @@ function renderAdminMoviesList(movies) {
             
             return `
                 <tr>
-                    <td><img src="${movie.posterUrl}" alt="${movie.title}" onerror="this.src='/assets/images/no-poster.png'"></td>
+                    <td><img src="${movie.posterUrl}" alt="${movie.title}" width="40" height="60" style="width: 40px; height: 60px; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/40x60/2a2a3a/FFFFFF?text=NO'"></td>
                     <td class="movie-title-cell">
                         <div style="font-weight: 600;">${movie.title}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">${movie.originTitle || ''}</div>

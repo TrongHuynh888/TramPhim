@@ -669,7 +669,7 @@
           </div>
           
           <!-- MOVIE INFO REDESIGN (ThiaPhim style) -->
-          <div class="movie-info-redesign container mt-4">
+          <div class="movie-info-redesign container">
             <div class="info-layout">
                 <!-- Poster bên trái -->
                 <div class="info-poster-wrapper">
@@ -717,22 +717,13 @@
           </div>
 
           <!-- Version Selection (New) -->
-          <div class="container" id="versionContainer" style="margin-top: 20px; display: none;">
+          <div class="container" id="versionContainer" style="display: none;">
               <h4 class="text-white mb-2" style="font-size: 1rem; opacity: 0.8;">Phiên bản:</h4>
               <div id="versionList" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
           </div>
 
-          <!-- Related Parts (New) -->
-          <div class="container" id="relatedPartsContainer" style="margin-top: 15px; display: none;">
-              <h4 class="text-white mb-2" style="font-size: 1rem; opacity: 0.8;">Phần phim liên quan:</h4>
-              <div id="relatedPartsList" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;"></div>
-          </div>
-
-          <!-- Main Content + Actor Sidebar Grid -->
-          <div class="detail-main-grid container">
-            <!-- CỘT TRÁI: Episodes + Comments -->
-            <div class="detail-main-col">
-              <!-- Episodes Section -->
+          <!-- Episodes Section (Moved up) -->
+          <div class="container" id="episodesSectionWrapper">
               <div class="episodes-section" id="episodesSection">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 class="section-title" style="margin-bottom: 0;">Danh Sách Tập</h3>
@@ -746,6 +737,19 @@
                   <!-- Episodes sẽ được load động -->
                 </div>
               </div>
+          </div>
+
+          <!-- Related Parts (New) -->
+          <div class="container" id="relatedPartsContainer" style="display: none;">
+              <h4 class="text-white mb-2" style="font-size: 1rem; opacity: 0.8;">Phần phim liên quan:</h4>
+              <div id="relatedPartsList" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;"></div>
+          </div>
+
+          <!-- Main Content + Actor Sidebar Grid -->
+          <div class="detail-main-grid container">
+            <!-- CỘT TRÁI: Episodes + Comments -->
+            <div class="detail-main-col">
+              <!-- Comments Section moved episodes out of here -->
 
               <!-- Comments Section -->
               <div class="comments-section">

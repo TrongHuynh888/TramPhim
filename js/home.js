@@ -72,8 +72,16 @@ function renderAllMovies(movies = null) {
    ============================================================ */
 function createMovieCard(movie, matchedTags = []) {
   // Logic xử lý dữ liệu (giữ nguyên)
+  // Logic xử lý hiển thị Phần/Mùa (Tránh lặp chữ "Phần Phần")
+  let displayPart = movie.part || "";
+  if (displayPart && !displayPart.toString().toLowerCase().includes("phần") && 
+      !displayPart.toString().toLowerCase().includes("season") && 
+      !displayPart.toString().toLowerCase().includes("chapter")) {
+      displayPart = `Phần ${displayPart}`;
+  }
+
   const partHtml = movie.part
-    ? `<span style="background: var(--accent-primary); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; text-transform: uppercase; vertical-align: middle;">${movie.part}</span>`
+    ? `<span style="background: var(--accent-primary); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; text-transform: uppercase; vertical-align: middle;">${displayPart}</span>`
     : "";
 
   let isLiked = false;
@@ -227,23 +235,30 @@ function handleMovieClick(event, movieId) {
     // --- LOGIC TÍNH TOÁN VỊ TRÍ THÔNG MINH ---
     const rect = currentWrapper.getBoundingClientRect();
     const screenWidth = window.innerWidth;
+    const isPortrait = window.innerHeight > window.innerWidth;
     
     // Reset các class định vị cũ
     currentWrapper.classList.remove("popup-align-left", "popup-align-right");
 
-    // Nếu mép trái thẻ < 10% màn hình -> Đang ở lề TRÁI -> Mở sang phải
-    if (rect.left < screenWidth * 0.1) {
-        currentWrapper.classList.add("popup-align-left");
-    } 
-    // Nếu mép phải thẻ > 90% màn hình -> Đang ở lề PHẢI -> Mở sang trái
-    else if (rect.right > screenWidth * 0.9) {
-        currentWrapper.classList.add("popup-align-right");
+    // CHỈ áp dụng Smart Positioning (thụt lề) cho các hàng phim cuộn ngang (landscape row) 
+    // và KHÔNG áp dụng khi đang ở giao diện dọc (Portrait) hoặc trong lưới movie-grid thông thường
+    const isHorizontalRow = currentWrapper.closest(".country-movies-row");
+    
+    if (isHorizontalRow && !isPortrait) {
+        // Nếu mép trái thẻ < 10% màn hình -> Đang ở lề TRÁI -> Mở sang phải
+        if (rect.left < screenWidth * 0.1) {
+            currentWrapper.classList.add("popup-align-left");
+        } 
+        // Nếu mép phải thẻ > 90% màn hình -> Đang ở lề PHẢI -> Mở sang trái
+        else if (rect.right > screenWidth * 0.9) {
+            currentWrapper.classList.add("popup-align-right");
+        }
     }
-    // Mặc định: CENTER (Không cần add class gì)
+    // Mặc định: CENTER cho Portrait hoặc movie-grid thông thường (Không cần add class gì)
 
     currentWrapper.classList.add("active-mobile");
 
-    // FIX STACKING CONTEXT: Nâng section cha lên cao nhất
+    // FIX STACKING CONTEXT: Nâng section cha lên cao, nhưng dưới Navbar (Navbar=2000)
     const parentSection = currentWrapper.closest(".country-section") || currentWrapper.closest(".section");
     if (parentSection) {
         parentSection.classList.add("section-active-popup");
@@ -267,12 +282,10 @@ function closeAllPopups() {
 
 // Bấm ra ngoài khoảng trống thì đóng hết
 document.addEventListener("click", function (event) {
-  if (window.innerWidth <= 1366) {
-    // Nếu không bấm vào bất kỳ card nào
+    // Nếu không bấm vào bất kỳ card nào chứa popup
     if (!event.target.closest(".movie-card-wrapper")) {
-      closeAllPopups();
+        closeAllPopups();
     }
-  }
 });
 
 /**
@@ -846,8 +859,8 @@ function initDragToScroll() {
       // Tính quãng đường kéo
       const walk = (x - startX) * 2; 
 
-      // 🔥 THRESHOLD: Chỉ kích hoạt Drag (và khóa click) khi chuột di chuyển > 5px
-      if (Math.abs(walk) > 5) {
+      // 🔥 THRESHOLD: Tăng lên 20px để tránh "nhận nhầm" tap thành drag trên Tablet/Mobile
+      if (Math.abs(walk) > 20) {
           isDragging = true;
           slider.classList.add("active-drag"); // Khóa pointer-events của thẻ phim
       }
@@ -876,6 +889,14 @@ function createLandscapeMovieCard(movie) {
     "https://placehold.co/300x169/2a2a3a/FFFFFF?text=NO+IMAGE";
   // Ưu tiên backgroundUrl (ảnh ngang), fallback về posterUrl
   const imageUrl = movie.backgroundUrl || movie.posterUrl || fallbackImage;
+
+  // Logic xử lý hiển thị Phần/Mùa (Tránh lặp chữ "Phần Phần")
+  let displayPart = movie.part || "";
+  if (displayPart && !displayPart.toString().toLowerCase().includes("phần") && 
+      !displayPart.toString().toLowerCase().includes("season") && 
+      !displayPart.toString().toLowerCase().includes("chapter")) {
+      displayPart = `Phần ${displayPart}`;
+  }
 
   let isLiked = false;
   if (
@@ -907,7 +928,7 @@ function createLandscapeMovieCard(movie) {
                 <div class="landscape-badge">${movie.quality || "HD"}</div>
                 ${
                   movie.part
-                    ? `<div class="landscape-badge" style="left: auto; right: 10px;">Phần ${movie.part}</div>`
+                    ? `<div class="landscape-badge" style="left: auto; right: 10px;">${displayPart}</div>`
                     : ""
                 }
                 ${lsEpisodeBadge}
@@ -941,7 +962,7 @@ function createLandscapeMovieCard(movie) {
                     <div class="meta-badges-row">
                         <span class="badge-item imdb">IMDb ${movie.rating || "7.0"}</span>
                         <span class="badge-item year">${movie.year || "2026"}</span>
-                        ${movie.part ? `<span class="badge-item">Phần ${movie.part}</span>` : ""}
+                        ${movie.part ? `<span class="badge-item">${displayPart}</span>` : ""}
                         ${movie.totalEpisodes ? `<span class="badge-item">Tập ${movie.totalEpisodes}</span>` : ""}
                         <span class="badge-item">${movie.quality || "HD"}</span>
                     </div>

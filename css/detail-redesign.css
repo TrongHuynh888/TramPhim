@@ -6,6 +6,7 @@
     --toolbar-bg: rgba(20, 20, 30, 0.95);
     --switch-on: #4db8ff;
     --switch-off: #333;
+    --section-gap: 25px; /* Khoảng cách thống nhất giữa các phần */
 }
 
 .movie-detail-redesign {
@@ -393,6 +394,9 @@ body.cinema-mode.controls-visible .detail-toolbar {
 
 /* --- RESPONSIVE --- */
 @media (max-width: 1024px) {
+    :root {
+        --section-gap: 15px; /* Giảm gap triệt để cho Tablet và Mobile */
+    }
     .detail-toolbar {
         justify-content: center;
     }
@@ -483,8 +487,8 @@ body.cinema-mode.controls-visible .detail-toolbar {
 }
 /* --- MOVIE INFO REDESIGN SECTION --- */
 .movie-info-redesign {
-    margin-top: 30px; /* Thêm khoảng cách với toolbar */
-    margin-bottom: 40px;
+    margin-top: var(--section-gap); /* Thống nhất khoảng cách */
+    margin-bottom: 0;
     padding: 0 40px; /* Thụt toàn bộ phần này vào 2 bên */
     animation: fadeInUp 0.5s ease;
 }
@@ -665,6 +669,12 @@ body.cinema-mode.controls-visible .detail-toolbar {
 }
 
 #versionContainer,
+#relatedPartsContainer,
+#episodesSectionWrapper {
+    margin-top: var(--section-gap);
+}
+
+#versionContainer,
 #relatedPartsContainer {
     padding: 0 40px !important;
 }
@@ -674,7 +684,8 @@ body.cinema-mode.controls-visible .detail-toolbar {
     display: flex;
     flex-direction: column;
     gap: 25px;
-    padding: 20px 40px 0 40px;
+    padding: 0 40px;
+    margin-top: var(--section-gap);
 }
 
 .detail-main-col {
@@ -780,6 +791,13 @@ body.cinema-mode.controls-visible .detail-toolbar {
     color: var(--text-primary);
 }
 
+/* --- COMMENTS SECTION OVERRIDE --- */
+.comments-section {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+}
+
 /* --- EPISODES LIST REDESIGN --- */
 .episodes-section {
     background: rgba(255,255,255,0.02);
@@ -844,31 +862,70 @@ body.cinema-mode.controls-visible .detail-toolbar {
     .info-title {
         font-size: 1.8rem;
     }
+    /* Fix vỡ layout diễn viên khi xoay ngang mobile */
+    .detail-actor-sidebar {
+        grid-column: 1 / -1; /* Chiếm full chiều rộng hàng mới */
+        width: 100%;
+        margin-top: 15px;
+    }
+    .sidebar-actor-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        justify-items: center;
+    }
 }
 
 @media (max-width: 768px) {
+    .movie-detail-redesign {
+        padding-top: 70px !important; /* Khớp với chiều cao navbar mobile */
+    }
+
+    .movie-info-redesign,
+    .detail-main-grid,
+    #versionContainer,
+    #episodesSectionWrapper,
+    #relatedPartsContainer {
+        padding: 0 15px !important; /* Giảm padding từ 40px xuống 15px để tránh bóp nội dung */
+        margin-top: var(--section-gap) !important; /* Dùng biến thống nhất */
+    }
+
+    .episodes-section {
+        padding: 15px !important; /* Giảm padding nội bộ từ 30px xuống 15px */
+    }
+
     .info-layout {
         grid-template-columns: 1fr;
         gap: 20px;
     }
     .info-poster-wrapper {
-        max-width: 200px;
+        max-width: 130px; /* Giảm thêm kích thước poster cho phù hợp mobile */
         margin: 0 auto;
     }
     .info-content-wrapper {
         text-align: center;
         align-items: center;
+        width: 100%; /* Đảm bảo chiếm hết chiều rộng đã trừ padding */
     }
     .info-meta {
         justify-content: center;
     }
     
+    .info-title {
+        font-size: 1.5rem; /* Thu nhỏ tiêu đề trên mobile */
+    }
+
+    .info-description-box {
+        padding: 15px; /* Giảm padding box mô tả */
+        width: 100%;
+    }
+    
     /* Actor sidebar on mobile */
     .detail-actor-sidebar {
         margin-top: 10px;
+        width: 100%;
     }
     .sidebar-actor-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); /* Linh hoạt hơn để tự căn giữa */
+        justify-items: center;
     }
     .sidebar-actor-item img {
         width: 50px;
@@ -876,7 +933,7 @@ body.cinema-mode.controls-visible .detail-toolbar {
     }
 
     .episodes-list {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     }
 }
 
