@@ -44,9 +44,21 @@ function showLoading(show, text = "Đang xử lý...") {
 
   if (show) {
     if (loadingText) loadingText.textContent = text;
-    if (overlay) overlay.classList.add("active");
+    if (overlay) {
+        overlay.classList.add("active");
+        document.body.classList.add("modal-open");
+    }
   } else {
-    if (overlay) overlay.classList.remove("active");
+    if (overlay) {
+        overlay.classList.remove("active");
+        // Kiểm tra xem còn modal nào khác đang mở không
+        setTimeout(() => {
+            const anyActiveModal = document.querySelector(".modal-overlay.active, .custom-popup-overlay.active, #loadingOverlay.active");
+            if (!anyActiveModal) {
+                document.body.classList.remove("modal-open");
+            }
+        }, 100);
+    }
   }
 }
 
@@ -237,8 +249,10 @@ function openModal(modalId) {
     const overlay = modal.closest(".modal-overlay");
     if (overlay) {
       overlay.classList.add("active"); // Hiện overlay
+      document.body.classList.add("modal-open"); // Khóa/Ẩn nút cuộn
     } else {
       modal.classList.add("active"); // Fallback nếu không có overlay
+      document.body.classList.add("modal-open");
     }
   } else {
     console.error("Không tìm thấy modal có ID:", modalId);
@@ -257,6 +271,13 @@ function closeModal(modalId) {
     } else {
       modal.classList.remove("active");
     }
+    // Kiểm tra xem còn modal nào mở không trước khi gỡ class modal-open
+    setTimeout(() => {
+        const anyActiveModal = document.querySelector(".modal-overlay.active, .custom-popup-overlay.active");
+        if (!anyActiveModal) {
+            document.body.classList.remove("modal-open");
+        }
+    }, 100);
   }
 }
 
@@ -731,6 +752,7 @@ function _showCustomPopup({ title, message, icon, iconColor, inputVisible, isTex
 
     // Hiện popup với animation
     overlay.classList.add("active");
+    document.body.classList.add("modal-open");
 
     // Bind sự kiện
     const confirmBtn = document.getElementById("customPopupConfirm");
@@ -738,6 +760,13 @@ function _showCustomPopup({ title, message, icon, iconColor, inputVisible, isTex
 
     const closePopup = () => {
         overlay.classList.remove("active");
+        // Kiểm tra xem còn modal nào khác đang mở không
+        setTimeout(() => {
+            const anyActiveModal = document.querySelector(".modal-overlay.active, .custom-popup-overlay.active");
+            if (!anyActiveModal) {
+                document.body.classList.remove("modal-open");
+            }
+        }, 100);
     };
 
     confirmBtn.onclick = () => {

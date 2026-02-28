@@ -256,10 +256,39 @@
         </div>
 
         <div class="mt-4">
+          <div class="avatar-filters-container" id="adminAvatarFilters">
+            <!-- Filter buttons load động (Tất cả, Anime, Meme...) -->
+            <button class="avatar-filter-btn active" onclick="adminFilterAvatarsByCat('all')">Tất cả</button>
+          </div>
+          
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="font-size: 1.2rem;"><i class="fas fa-th-large"></i> Danh sách ảnh đang có</h3>
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <h3 style="font-size: 1.2rem;"><i class="fas fa-th-large"></i> Danh sách ảnh đang có</h3>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                <input type="checkbox" id="adminAvatarSelectAll" onclick="adminToggleSelectAllAvatars(this.checked)" />
+                Chọn tất cả
+              </label>
+            </div>
             <span class="text-muted" id="adminAvatarCount">Số lượng: 0</span>
           </div>
+
+          <!-- Thanh thao tác hàng loạt (Bulk Actions) -->
+          <div id="avatarBulkActionsBar">
+            <div class="bulk-info">
+              <span class="selected-count">Đã chọn: <strong id="adminSelectedAvatarCount">0</strong></span>
+              <button class="btn btn-sm btn-secondary" onclick="adminClearAvatarSelection()">Bỏ chọn</button>
+            </div>
+            <div class="bulk-actions">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Đổi sang:</span>
+              <select class="form-select btn-sm" id="adminBulkAvatarCategory" style="width: 150px; padding: 5px 10px;">
+                <!-- Load động danh mục -->
+              </select>
+              <button class="btn btn-sm btn-primary" onclick="adminBulkUpdateAvatarCategory()">
+                <i class="fas fa-check"></i> Cập nhật
+              </button>
+            </div>
+          </div>
+
           <div class="avatar-grid" id="adminAvatarLibraryGrid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px;">
             <!-- Data will be loaded here -->
             <div class="loading-spinner" style="margin: 20px auto;"></div>

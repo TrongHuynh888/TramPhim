@@ -2596,6 +2596,13 @@
   transform: translateY(0) scale(1);
 }
 
+/* Ẩn nút khi đang mở modal/form */
+body.modal-open .scroll-top-btn {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none;
+}
+
 .scroll-top-btn i {
   font-size: 24px;
   margin-bottom: 4px;

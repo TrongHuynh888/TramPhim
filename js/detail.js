@@ -326,7 +326,9 @@ async function viewMovieDetail(movieId, updateHistory = true) {
   if (movie.episodes && movie.episodes[currentEpisode]) {
       renderDetailVersions(movie.episodes[currentEpisode]);
   }
-  renderRelatedParts(movie);
+  renderRecommendedMovies(movie);
+  renderMoviePartsSeries(movie);
+
 
   // 6. Kiểm tra lịch sử xem
   await checkAndShowContinueWatchingModal();
@@ -2007,19 +2009,13 @@ function showResumeModal(progress) {
     pendingResumeData = { ...progress, percentage };
     
     // Hiển modal
-    modal.classList.add("active");
+    openModal("resumeWatchModal");
 }
 
 function closeResumeModal() {
     // Đóng cả modal cũ và modal mới
-    const oldModal = document.getElementById("resumeWatchModal");
-    if (oldModal) {
-        oldModal.classList.remove("active");
-    }
-    const newModal = document.getElementById("continueWatchingModal");
-    if (newModal) {
-        newModal.classList.remove("active");
-    }
+    closeModal("resumeWatchModal");
+    closeModal("continueWatchingModal");
     pendingResumeData = null;
 }
 
@@ -2027,10 +2023,7 @@ function closeResumeModal() {
  * Đóng modal tiếp tục xem
  */
 function closeContinueWatchingModal() {
-    const modal = document.getElementById("continueWatchingModal");
-    if (modal) {
-        modal.classList.remove("active");
-    }
+    closeModal("continueWatchingModal");
 }
 
 window.handleResumeChoice = function(continueWatching) {
@@ -3183,7 +3176,7 @@ function showContinueWatchingModal(minutesWatched, episodeIndex, timeWatched) {
     modal.dataset.episodeIndex = episodeIndex;
     
     // Hiển thị modal
-    modal.classList.add("active");
+    openModal("continueWatchingModal");
 }
 
 window.handleContinueWatching = function(continueWatch) {
@@ -3194,7 +3187,7 @@ window.handleContinueWatching = function(continueWatch) {
     const episodeIndex = parseInt(modal.dataset.episodeIndex) || 0;
     
     // Ẩn modal
-    modal.classList.remove("active");
+    closeModal("continueWatchingModal");
     
     console.log("🎬 handleContinueWatching:", continueWatch, "timeWatched:", timeWatched, "episode:", episodeIndex);
     
@@ -3698,65 +3691,12 @@ function goBackFromDetail() {
 /**
  * Render nút chọn phiên bản (Vietsub/Thuyết minh)
  */
-function renderDetailVersions(episode) {
-  const container = document.getElementById("versionContainer");
-  const list = document.getElementById("versionList");
-  if (!container || !list) return;
-
-  list.innerHTML = "";
-  container.style.display = "none";
-
-  if (!episode) return;
-
-  let sources = [];
-  if (episode.sources && Array.isArray(episode.sources) && episode.sources.length > 0) {
-      sources = episode.sources;
-  } else if (episode.videoType) {
-      // Data cũ
-      sources = [{ label: "Bản gốc", type: episode.videoType, source: episode.videoSource || episode.youtubeId }];
-  }
-
-  if (sources.length > 0) { // Luôn hiện nếu có source (kể cả 1 source để user biết bản gì)
-      container.style.display = "block";
-      const preferredLabel = localStorage.getItem("preferredSourceLabel");
-      
-      sources.forEach((src) => {
-          const btn = document.createElement("button");
-          // Logic active: Nếu label trùng preferred HOẶC (chưa có preferred và là cái đầu tiên)
-          const isActive = (src.label === preferredLabel) || (!preferredLabel && sources.indexOf(src) === 0);
-          
-          btn.className = "btn btn-sm version-btn";
-          btn.style.cssText = `min-width: 80px; background: ${isActive ? 'var(--accent-primary, #e50914)' : '#2a2a3a'}; color: #fff; border: 2px solid ${isActive ? 'var(--accent-primary, #e50914)' : '#3a3a4a'}; border-radius: 20px; padding: 6px 16px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s;`;
-          btn.textContent = src.label;
-          
-          btn.onclick = () => {
-              if (src.label === preferredLabel) return; 
-              
-              localStorage.setItem("preferredSourceLabel", src.label);
-              
-              // Force save progress trước khi reload
-              if (currentMovieId) {
-                 const video = document.getElementById("html5Player");
-                 let time = (!video.classList.contains("hidden")) ? video.currentTime : 0;
-                 saveWatchProgressImmediate(currentMovieId, currentEpisode, time, 0);
-              }
-              
-              // Reload page safely (SPA style)
-              setTimeout(() => {
-                  viewMovieDetail(currentMovieId);
-              }, 50);
-          };
-          list.appendChild(btn);
-      });
-  }
-}
-
 /**
- * Render phần phim liên quan (Cùng tên hoặc Series)
+ * Render phim đề xuất (dựa trên thể loại/tags) - Hiển thị dưới cùng
  */
-function renderRelatedParts(movie) {
-  const container = document.getElementById("relatedPartsContainer");
-  const list = document.getElementById("relatedPartsList");
+function renderRecommendedMovies(movie) {
+  const container = document.getElementById("recommendedMoviesContainer");
+  const list = document.getElementById("recommendedMoviesList");
   if (!container || !list) return;
 
   list.innerHTML = "";
@@ -3764,22 +3704,54 @@ function renderRelatedParts(movie) {
   
   if (!allMovies || allMovies.length === 0) return;
 
-  // Lấy tên gốc (Bỏ phần số cuối: "Lật Mặt 6" -> "Lật Mặt")
-  // Regex: Bỏ "Phần X", "Tập X", hoặc số ở cuối string
-  let cleanName = movie.title.split(":")[0].split("-")[0].trim();
-  cleanName = cleanName.replace(/(\s+)(\d+|I|II|III|IV|V)+$/i, "").trim();
-  
-  if (cleanName.length < 3) return; // Tên quá ngắn dễ trùng bậy
+  // Safely parse category string or array into an array of lowercase strings
+  const parseCategories = (cat) => {
+      if (!cat) return [];
+      if (typeof cat === 'string') {
+          // Phân tách chuỗi bằng dấu phẩy, loại bỏ khoảng trắng dư và chuyển thành in thường
+          return cat.split(',').map(c => c.trim().toLowerCase()).filter(Boolean);
+      }
+      if (Array.isArray(cat)) {
+          return cat.map(c => typeof c === 'string' ? c : (c.name || '')).filter(Boolean).map(c => String(c).trim().toLowerCase());
+      }
+      return [];
+  };
 
-  // Lọc phim liên quan
-  const related = allMovies.filter(m => 
-      m.id !== movie.id && 
-      m.title.toLowerCase().includes(cleanName.toLowerCase())
-  );
+  const parseTags = (tags) => {
+      if (!tags) return [];
+      if (typeof tags === 'string') return tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      if (Array.isArray(tags)) return tags.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+      return [];
+  };
 
-  if (related.length > 0) {
+  // Lấy danh sách thể loại và tags của phim hiện tại
+  const currentCategories = parseCategories(movie.category);
+  const currentTags = parseTags(movie.tags);
+
+  if (currentCategories.length === 0 && currentTags.length === 0) return;
+
+  // Tiêu chí: có chung ít nhất 1 thể loại hoặc tag
+  let recommended = allMovies.filter(m => {
+      if (m.id === movie.id) return false;
+      
+      const mCategories = parseCategories(m.category);
+      const mTags = parseTags(m.tags);
+
+      const hasCommonCategory = mCategories.some(c => currentCategories.includes(c));
+      const hasCommonTag = mTags.some(t => currentTags.includes(t));
+
+      return hasCommonCategory || hasCommonTag;
+  });
+
+  // Xáo trộn mảng (Shuffle) để luôn đưa ra gợi ý mới
+  recommended = recommended.sort(() => 0.5 - Math.random());
+
+  // Giới hạn số lượng hiển thị (VD: 15 phim)
+  recommended = recommended.slice(0, 15);
+
+  if (recommended.length > 0) {
       container.style.display = "block";
-      related.forEach(m => {
+      recommended.forEach(m => {
           const item = document.createElement("div");
           item.className = "related-part-item";
           item.style.minWidth = "110px";
@@ -3788,8 +3760,8 @@ function renderRelatedParts(movie) {
           item.style.textAlign = "center";
           
           item.innerHTML = `
-              <div style="position: relative; aspect-ratio: 2/3; overflow: hidden; border-radius: 8px; border: 1px solid #333; margin-bottom: 5px;">
-                  <img src="${m.posterUrl || m.backgroundUrl || ''}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" onerror="this.src='https://placehold.co/200x300/1a1a1a/FFF?text=No+Image'">
+              <div style="position: relative; aspect-ratio: 2/3; overflow: hidden; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 5px;">
+                  <img src="${m.posterUrl || m.backgroundUrl || ''}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" onerror="this.src='https://placehold.co/200x300/1a1a2e/FFF?text=No+Image'">
               </div>
               <div style="font-size: 0.8rem; line-height: 1.2; color: #ccc; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${escapeHtml(m.title)}">${escapeHtml(m.title)}</div>
           `;
@@ -3803,10 +3775,135 @@ function renderRelatedParts(movie) {
 }
 
 /**
- * Đổi trang danh sách tập
+ * Render danh sách các phiên bản phim (Vietsub, Thuyết minh...) - Bản Modern
  */
-function changeEpisodePage(pageIndex) {
-    currentEpisodePage = parseInt(pageIndex);
-    const movie = allMovies.find(m => m.id === currentMovieId);
-    if (movie) renderEpisodes(movie.episodes);
+function renderDetailVersions(episode) {
+  const row = document.getElementById("movieExtraControlsRow");
+  const list = document.getElementById("versionListModern");
+  if (!row || !list) return;
+
+  list.innerHTML = "";
+  // row.style.display handles overall visibility (if both parts and versions exist or just one)
+
+  if (!episode) return;
+
+  let sources = [];
+  if (episode.sources && Array.isArray(episode.sources) && episode.sources.length > 0) {
+      sources = episode.sources;
+  } else if (episode.videoType) {
+      sources = [{ label: "Bản gốc", type: episode.videoType, source: episode.videoSource || episode.youtubeId }];
+  }
+
+  if (sources.length > 0) {
+      row.style.display = "block";
+      const preferredLabel = localStorage.getItem("preferredSourceLabel");
+      
+      sources.forEach((src) => {
+          const btn = document.createElement("button");
+          const isActive = (src.label === preferredLabel) || (!preferredLabel && sources.indexOf(src) === 0);
+          
+          btn.className = `version-btn-modern ${isActive ? 'active' : ''}`;
+          btn.innerHTML = `<i class="fas fa-desktop"></i> <span>${src.label}</span>`;
+          
+          btn.onclick = () => {
+              if (src.label === preferredLabel) return; 
+              localStorage.setItem("preferredSourceLabel", src.label);
+              
+              if (currentMovieId) {
+                 const video = document.getElementById("html5Player");
+                 let time = (!video.classList.contains("hidden")) ? video.currentTime : 0;
+                 saveWatchProgressImmediate(currentMovieId, currentEpisode, time, 0);
+              }
+              
+              setTimeout(() => {
+                  viewMovieDetail(currentMovieId);
+              }, 50);
+          };
+          list.appendChild(btn);
+      });
+  }
 }
+
+/**
+ * Render Dropdown chọn Phần/Mùa phim - Bản Modern
+ */
+function renderMoviePartsSeries(movie) {
+    const row = document.getElementById("movieExtraControlsRow");
+    const menu = document.getElementById("partDropdownMenu");
+    const currentName = document.getElementById("currentPartName");
+    const chevron = document.getElementById("partChevron");
+    
+    if (!row || !menu || !currentName) return;
+
+    menu.innerHTML = "";
+    if (chevron) chevron.style.display = "none";
+    
+    // Tên phần hiện tại
+    currentName.textContent = movie.part || "Phần 1";
+
+    if (!allMovies || allMovies.length === 0) return;
+
+    // Tìm các phim cùng bộ
+    let baseTitle = movie.title.split(":")[0].split("-")[0].trim();
+    baseTitle = baseTitle.replace(/(\s+)(\d+|I|II|III|IV|V)+$/i, "").trim();
+    
+    if (baseTitle.length < 2) return;
+
+    const seriesMovies = allMovies.filter(m => 
+        m.title.toLowerCase().includes(baseTitle.toLowerCase())
+    );
+
+    // Chỉ hiện dropdown nếu có từ 2 phim trở lên
+    if (seriesMovies.length > 1) {
+        row.style.display = "block";
+        if (chevron) chevron.style.display = "inline-block";
+
+        seriesMovies.sort((a, b) => {
+            const getPartNum = (m) => {
+                const match = (m.part || m.title).match(/\d+/);
+                return match ? parseInt(match[0]) : 0;
+            };
+            return getPartNum(a) - getPartNum(b);
+        });
+
+        seriesMovies.forEach(m => {
+            const item = document.createElement("div");
+            item.className = `part-dropdown-item ${m.id === movie.id ? 'active' : ''}`;
+            
+            const partText = m.part || m.title.replace(baseTitle, "").trim() || "Phần 1";
+            item.textContent = partText;
+            
+            item.onclick = (e) => {
+                e.stopPropagation();
+                if (m.id !== movie.id) {
+                    viewMovieDetail(m.id);
+                }
+                menu.classList.remove("active");
+            };
+            
+            menu.appendChild(item);
+        });
+    }
+}
+
+/**
+ * Toggle Dropdown chọn phần
+ */
+window.togglePartDropdown = function(event) {
+    event.stopPropagation();
+    const menu = document.getElementById("partDropdownMenu");
+    if (!menu || menu.innerHTML.trim() === "") return; // Nếu không có phần khác thì không đổ ra gì
+
+    const isActive = menu.classList.contains("active");
+    // Đóng tất cả dropdown khác (nếu có)
+    document.querySelectorAll(".part-dropdown-menu").forEach(m => m.classList.remove("active"));
+    
+    if (!isActive) {
+        menu.classList.add("active");
+    }
+};
+
+// Đóng dropdown khi click ra ngoài
+document.addEventListener("click", () => {
+    document.querySelectorAll(".part-dropdown-menu").forEach(m => m.classList.remove("active"));
+});

@@ -317,12 +317,12 @@ body.cinema-mode footer {
 body.cinema-mode .movie-info-redesign,
 body.cinema-mode .episodes-section,
 body.cinema-mode .comments-section,
-body.cinema-mode #versionContainer,
-body.cinema-mode #relatedPartsContainer,
-body.cinema-mode .reaction-sidebar,
-body.cinema-mode .detail-main-grid {
-    display: none !important;
-}
+    body.cinema-mode #versionContainer,
+    body.cinema-mode #recommendedMoviesContainer,
+    body.cinema-mode .reaction-sidebar,
+    body.cinema-mode .detail-main-grid {
+        display: none !important;
+    }
 
 body.cinema-mode .detail-top-bar {
     position: fixed;
@@ -668,16 +668,145 @@ body.cinema-mode.controls-visible .detail-toolbar {
     gap: 5px;
 }
 
-#versionContainer,
-#relatedPartsContainer,
-#episodesSectionWrapper {
-    margin-top: var(--section-gap);
+/* --- UNIFIED MOVIE CONTROLS ROW --- */
+.movie-extra-controls-inner {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 18px;
+    gap: 15px;
 }
 
-#versionContainer,
-#relatedPartsContainer {
+.part-selector-dropdown {
+    position: relative;
+    user-select: none;
+}
+
+.part-selector-trigger {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.part-selector-trigger i.fa-bars {
+    color: var(--accent-primary);
+    font-size: 1.1rem;
+}
+
+.part-selector-trigger:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.part-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    min-width: 180px;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    padding: 8px 0;
+    overflow: hidden;
+    animation: fadeInDown 0.3s ease;
+}
+
+.part-dropdown-menu.active {
+    display: flex;
+}
+
+.part-dropdown-item {
+    padding: 10px 18px;
+    color: #ccc;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.part-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.part-dropdown-item.active {
+    background: var(--accent-primary);
+    color: #fff;
+}
+
+.divider-vertical {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.version-list-modern {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.version-btn-modern {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #aaa;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.version-btn-modern:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.version-btn-modern.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #fff;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.version-btn-modern i {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#movieExtraControlsRow,
+#recommendedMoviesContainer {
+    margin-top: 10px !important; /* Thu hẹp tối đa khoảng cách phía trên */
     padding: 0 40px !important;
 }
+
+#episodesSectionWrapper {
+    margin-top: 5px !important; /* Khoảng cách tối thiểu */
+}
+
 
 /* --- DETAIL MAIN GRID (Episodes + Comments) --- */
 .detail-main-grid {
@@ -685,7 +814,7 @@ body.cinema-mode.controls-visible .detail-toolbar {
     flex-direction: column;
     gap: 25px;
     padding: 0 40px;
-    margin-top: var(--section-gap);
+    margin-top: 20px; /* Giảm khoảng cách phía trên */
 }
 
 .detail-main-col {
@@ -799,10 +928,12 @@ body.cinema-mode.controls-visible .detail-toolbar {
 }
 
 /* --- EPISODES LIST REDESIGN --- */
-.episodes-section {
-    background: rgba(255,255,255,0.02);
-    padding: 30px;
-    border-radius: 16px;
+#episodesSection {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    padding: 15px 30px !important; /* Giảm padding thêm nữa */
+    border-radius: 10px !important; 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .episodes-list {
@@ -883,14 +1014,16 @@ body.cinema-mode.controls-visible .detail-toolbar {
     .detail-main-grid,
     #versionContainer,
     #episodesSectionWrapper,
-    #relatedPartsContainer {
-        padding: 0 15px !important; /* Giảm padding từ 40px xuống 15px để tránh bóp nội dung */
-        margin-top: var(--section-gap) !important; /* Dùng biến thống nhất */
+    #recommendedMoviesContainer {
+        padding: 0 15px !important;
+        margin-top: 10px !important; /* Thu hẹp thêm trên mobile */
     }
 
     .episodes-section {
-        padding: 15px !important; /* Giảm padding nội bộ từ 30px xuống 15px */
+        padding: 20px !important;
+        border-radius: 10px !important;
     }
+
 
     .info-layout {
         grid-template-columns: 1fr;

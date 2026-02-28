@@ -296,6 +296,10 @@
                 <input type="file" id="posterInput" accept="image/*" style="display: none;" onchange="uploadMovieImage(this, 'moviePoster', 'posterPreview')">
               </div>
               <div id="posterPreview" class="image-upload-preview" style="margin-top: 8px; display: none;">
+                <!-- Chỉ báo nguồn ảnh -->
+                <div class="image-source-indicator" title="Chưa xác định nguồn">
+                  <i class="fas fa-question"></i>
+                </div>
                 <img src="" style="max-height: 150px; border-radius: 4px; border: 1px solid var(--border-color);">
               </div>
             </div>
@@ -317,6 +321,10 @@
                 <input type="file" id="bgInput" accept="image/*" style="display: none;" onchange="uploadMovieImage(this, 'movieBackground', 'bgPreview')">
               </div>
               <div id="bgPreview" class="image-upload-preview" style="margin-top: 8px; display: none;">
+                <!-- Chỉ báo nguồn ảnh -->
+                <div class="image-source-indicator" title="Chưa xác định nguồn">
+                  <i class="fas fa-question"></i>
+                </div>
                 <img src="" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid var(--border-color);">
               </div>
             </div>
